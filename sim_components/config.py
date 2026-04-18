@@ -16,13 +16,30 @@ class SensorType(Enum):
     IDEAL = auto()
     IMU_NOISY = auto()
     IMU_PHYSICAL = auto()
+class MotorType(Enum):
+    IDEAL = auto()
+    REAL = auto()
+    #
+    BLDC_FOC = auto() 
 
 
-@dataclass(frozen=True)
+@dataclass
 class MotorConfig:
-    MAX_TORQUE: float = 0.08
+    MAX_TORQUE: float = 0.023
     MAX_VEL: float = 40.0
-    DEADBAND_RATIO: float = 0.3
+
+    KV_RATING: float = 360.0
+    VOLTAGE: float = 12.0
+    TORQUE_CONSTANT: float = 8.27 / 360.0 
+    
+    # FOC
+    FOC_BANDWIDTH_HZ: float = 200.0 #
+    
+    #
+    DEADBAND_RATIO: float = 0.02
+    NOISE: float = 0.1
+    ASYMMETRY: float = 0.1
+    DELAY: int = 5 # (sim steps)
 
 
 @dataclass
@@ -50,17 +67,18 @@ class AppConfig:
     mode: RunMode = RunMode.SIMULATION
     controller: ControllerType = ControllerType.PID
     sensor: SensorType = SensorType.IDEAL
+    motors: MotorType = MotorType.REAL
 
     # default values
-    motor: MotorConfig = field(default_factory=MotorConfig)
     ctrl_params: ControllerConfig = field(default_factory=ControllerConfig)
     sim_params: SimConfig = field(default_factory=SimConfig)
+    motor_params: MotorConfig = field(default_factory=MotorConfig)
 
 @dataclass
 class RobotConfig:
     controller: Any
     sensor: Any
-    motor_config: MotorConfig
+    motors: list[Any]
 
 
 

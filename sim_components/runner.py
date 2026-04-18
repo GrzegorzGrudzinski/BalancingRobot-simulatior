@@ -11,11 +11,12 @@ class AppRunner:
 
         self.controller = RobotBuilder.create_controller(config)
         self.sensor = RobotBuilder.create_sensor(config)
+        self.motors = RobotBuilder.create_motor(config)
 
         self.robot_cfg = RobotConfig(
             controller= self.controller,
             sensor= self.sensor,
-            motor_config= self.config.motor
+            motors = self.motors
         )
 
     def run(self):

@@ -42,10 +42,15 @@ class Robot:
 
     def _setup_dynamics(self) -> None:
         """ Some physical parameters of the robot """
+        # mass_variance = rng.uniform(0.9, 1.1)
+        friction_variance = rng.uniform(0.8, 1.2)
+
         for i in self._joint_indices:
             p.changeDynamics(
                 bodyUniqueId=self._id, linkIndex=i, 
-                lateralFriction=1.2, rollingFriction=0.01, spinningFriction=0.01,
+                lateralFriction=1.2 * friction_variance, 
+                rollingFriction=0.01, 
+                spinningFriction=0.01,
                 jointDamping=0.005, linearDamping=0.01, angularDamping=0.01
             )
 
@@ -88,6 +93,9 @@ class Robot:
         self._config.sensor.reset(start_angle)
         self._config.controller.reset()
 
+        for motor in self._config.motors:
+            motor.reset()
+
     '''
     Motor and Control functions
     '''
@@ -100,29 +108,18 @@ class Robot:
             forces=[0.0] * len(self._joint_indices)
         )
 
-    # (Virtual) 
     def _control_motors(self, target_val: list[float], mode: int = p.TORQUE_CONTROL) -> None:
-        motor_cfg = self._config.motor_config
-        deadband = motor_cfg.DEADBAND_RATIO * motor_cfg.MAX_TORQUE
-        real_torque = []
-              
-        real_torque = []
-        for val in target_val:
-            torque = max(min(val, motor_cfg.MAX_TORQUE), -motor_cfg.MAX_TORQUE)
-
-            # Add deadband
-            # real_torque.append(0.0 if abs(torque) < deadband else torque)
-            if abs(torque) < deadband:
-                real_torque.append(0.0)
-            else:
-                real_torque.append(torque)
-
+        torque = [
+            motor.move(val) 
+            for motor, val in zip(self._config.motors, target_val)
+        ]
+        
         p.setJointMotorControlArray(
             self._id, 
             self._joint_indices, 
             mode, 
             # targetVelocities = target_val,
-            forces = real_torque
+            forces = torque
         )
         
     def update(self) -> None:
