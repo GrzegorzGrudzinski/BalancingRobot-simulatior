@@ -3,11 +3,10 @@
 '''
 
 import numpy as np
+from sim_components.controllers.base import BaseController
 
-class PID:
+class PID(BaseController):
     def __init__(self, max_output: float, Kp: float = 1.0, Ki: float = 0.0, Kd: float = 0.0):
-        self.dt = 1.0 / 240.0
-
         self.Kp = Kp
         self.Ki = Ki
         self.Kd = Kd
@@ -16,36 +15,30 @@ class PID:
         self.output_max = max_output
         
         self.integral = 0.0
-        self.last_input = 0.0
-    
-    def set_parameters(self, dt: float, kp: float = None, ki: float = None, kd: float = None) -> None:
-        self._dt = dt
-        if kp is not None: self._kp = kp
-        if ki is not None: self._ki = ki
-        if kd is not None: self._kd = kd
+        self.last_input = 0.0 
 
-    def reset(self):
-        self.integral = 0.0
-        self.last_input = 0.0
-
-    def compute(self, setpoint: float, current_value: float) -> float:
+    def compute(self, setpoint: float, current_value: float, dt: float) -> float:
         sp = np.deg2rad(setpoint)
         error = sp - current_value
         
         P = self.Kp * error
         
         if self.Ki != 0:
-            self.integral += error * self.dt
+            self.integral += error * dt
             # Anti-Windup
             self.integral = max(min(self.integral, self.output_max / self.Ki), 
                                 self.output_min / self.Ki)
         I = self.Ki * self.integral
         
         # Derivative on Measurement
-        D = -self.Kd * (current_value - self.last_input) / self.dt
+        D = -self.Kd * (current_value - self.last_input) / dt
         
         output = P + I + D
         output = max(min(output, self.output_max), self.output_min)
         
         self.last_input = current_value
         return output
+
+    def reset(self):
+        self.integral = 0.0
+        self.last_input = 0.0

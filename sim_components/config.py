@@ -2,10 +2,71 @@
     config.py
 '''
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from enum import Enum, auto
+from typing import Any
+
+class RunMode(Enum):
+    SIMULATION = auto()
+    PHYSICAL = auto()
+class ControllerType(Enum): 
+    PID = auto()
+    CONTROLLER_PHYSICAL = auto()
+class SensorType(Enum): 
+    IDEAL = auto()
+    IMU_NOISY = auto()
+    IMU_PHYSICAL = auto()
+
 
 @dataclass(frozen=True)
 class MotorConfig:
     MAX_TORQUE: float = 0.08
     MAX_VEL: float = 40.0
     DEADBAND_RATIO: float = 0.3
+
+
+@dataclass
+class ControllerConfig:
+    """Global parameters for every controller"""
+    pid_kp: float = 15.0
+    pid_ki: float = 0.0
+    pid_kd: float = 1.0
+    max_output: float = 40.0 # MotorConfig.MAX_VEL
+
+
+@dataclass
+class SimConfig:
+    """Environment settings"""
+    # debug info
+    show_wireframe: bool = False
+    camera_tracking: bool = True
+    show_com: bool = True
+    # external disturbances 
+    disturb_force: float = 30.0
+    disturb_interval: int = 200
+
+@dataclass
+class AppConfig:
+    mode: RunMode = RunMode.SIMULATION
+    controller: ControllerType = ControllerType.PID
+    sensor: SensorType = SensorType.IDEAL
+
+    # default values
+    motor: MotorConfig = field(default_factory=MotorConfig)
+    ctrl_params: ControllerConfig = field(default_factory=ControllerConfig)
+    sim_params: SimConfig = field(default_factory=SimConfig)
+
+@dataclass
+class RobotConfig:
+    controller: Any
+    sensor: Any
+    motor_config: MotorConfig
+
+
+
+'''
+    self._show_com = False
+
+
+
+'''

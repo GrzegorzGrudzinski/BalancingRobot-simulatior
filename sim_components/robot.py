@@ -5,14 +5,14 @@
 import pybullet as p
 import numpy as np
 
-from sim_components.config import MotorConfig
-from sim_components.pid import PID
+from sim_components.config import RobotConfig
 
 rng = np.random.default_rng()
 
 class Robot:
-    def __init__(self, urdf_path: str, scale: float = 1, Kp:float=1, Ki:float=0, Kd:float=0) -> None:
-        # Position and URDF config
+    def __init__(self, urdf_path: str, config: RobotConfig, scale: float = 1) -> None:
+        # config
+        self._config = config
         self._scale = scale
         self._start_pos = [0,0,1*scale/5]
         
@@ -22,9 +22,7 @@ class Robot:
         
         self._y_axis_num:int = 0
         self._orientation = self._start_orientation
-        self._y_angle = p.getEulerFromQuaternion(self._orientation)[self._y_axis_num] # obrów w osi Y
         self._position = self._start_pos
-        self._sensor_bias = 0.0 # 
 
         # Joints info
         self._joints_num = p.getNumJoints(self._id)
@@ -34,13 +32,13 @@ class Robot:
         ]
 
         self._setup_dynamics()
-
-        # PID controller
-        self._controller = PID(max_output=MotorConfig.MAX_VEL, Kp=Kp, Ki=Ki, Kd=Kd)
+        self._config.sensor.reset(np.deg2rad(start_pitch))
         self._free_motors()
 
         # Debug
         self._show_com = False
+        #
+        self._dt = 1.0 / 240.0
 
     def _setup_dynamics(self) -> None:
         """ Some physical parameters of the robot """
@@ -55,12 +53,12 @@ class Robot:
     def position(self) -> list[float]:
         return list(p.getBasePositionAndOrientation(self._id)[0])
 
-    def configure_pid(self, dt: float = None, kp: float = None, ki: float = None, kd: float = None) -> None:
-        self._controller.set_parameters(dt, kp, ki, kd)
-
     def enable_com_display(self, enable: bool) -> None:
         self._show_com = enable
-
+    
+    def set_dt(self, dt: float) -> None:
+        self._dt = dt
+    
     def apply_disturbance(self, force: list[float]) -> None:
         # todo - losowanie roznych czesci robota ??
         pos = self.position
@@ -71,19 +69,7 @@ class Robot:
         end_pos = [pos[0] + force[0] * scale, pos[1] + force[1] * scale, pos[2] + force[2] * scale]
         p.addUserDebugLine(pos, end_pos, [1, 0.5, 0], 4, 0.5)
 
-    # (Virtual) Simulate IMU
-    def _update_sensor(self) -> None:
-        self._position, self._orientation = p.getBasePositionAndOrientation(self._id)
-        sim_angle =  p.getEulerFromQuaternion(self._orientation)[self._y_axis_num] # obrów w osi Y
-
-        self._sensor_bias += rng.normal(0.0, 0.0001)
-        noise = rng.normal(0.0, np.deg2rad(0.5))
-        real_angle = sim_angle + noise + self._sensor_bias
-        
-        alpha = 0.85
-        self._y_angle = alpha * self._y_angle + (1-alpha) * real_angle
-            
-    # (Virtual) Reset the position and PID
+                
     def _reset_position(self, pos = None, orn = None) -> None:
         ''' Reset the robot to the starting state '''
         p.resetBaseVelocity(self._id, linearVelocity=[0, 0, 0], angularVelocity=[0, 0, 0])
@@ -96,13 +82,15 @@ class Robot:
 
         p.resetBasePositionAndOrientation(self._id, self._start_pos, self._start_orientation)
         self._orientation = self._start_orientation
-        self._y_angle = p.getEulerFromQuaternion(self._orientation)[self._y_axis_num]
         self._position = self._start_pos
+
+        start_angle = p.getEulerFromQuaternion(self._start_orientation)[self._y_axis_num]
+        self._config.sensor.reset(start_angle)
+        self._config.controller.reset()
 
     '''
     Motor and Control functions
     '''
-    # (Virtual) STOP the motors
     def _free_motors(self):
         if not self._joint_indices: return  
         p.setJointMotorControlArray(
@@ -114,14 +102,13 @@ class Robot:
 
     # (Virtual) 
     def _control_motors(self, target_val: list[float], mode: int = p.TORQUE_CONTROL) -> None:
-        
-        deadband = MotorConfig.DEADBAND_RATIO * MotorConfig.MAX_TORQUE
+        motor_cfg = self._config.motor_config
+        deadband = motor_cfg.DEADBAND_RATIO * motor_cfg.MAX_TORQUE
         real_torque = []
               
-        # torque = [max_torque] * len(self._joint_indices)
         real_torque = []
         for val in target_val:
-            torque = max(min(val, MotorConfig.MAX_TORQUE), -MotorConfig.MAX_TORQUE)
+            torque = max(min(val, motor_cfg.MAX_TORQUE), -motor_cfg.MAX_TORQUE)
 
             # Add deadband
             # real_torque.append(0.0 if abs(torque) < deadband else torque)
@@ -140,26 +127,20 @@ class Robot:
         
     def update(self) -> None:
         """ Main robot function """
-        self._update_sensor()
         
+        angle = self._config.sensor.read(self._id, self._y_axis_num)
         setpoint = 0.0
-        noise = rng.uniform(-np.deg2rad(1), np.deg2rad(1))
-        angle = self._y_angle + noise
         
-        motor_val = self._controller.compute(setpoint, angle)
+        motor_val = self._config.controller.compute(setpoint, angle, self._dt)
         self._control_motors([-motor_val, motor_val])
 
         # Reset when fallen
-        if abs(self._y_angle) > np.deg2rad(70):
-            self._controller.reset()
+        if abs(angle) > np.deg2rad(70):
             self._reset_position()
 
     '''
     Debug functions
     '''
-    def showCOM(self, val: bool)-> None:
-        self._show_com = val
-
     def _get_total_com(self):
         total_mass = 0
         com_x, com_y, com_z = 0.0, 0.0, 0.0
@@ -201,6 +182,7 @@ class Robot:
             pointSize=1*self._scale, 
             lifeTime=0.1
         )
+        
     def draw_debug_data(self) -> None:
         if not self._show_com:
             return
