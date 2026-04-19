@@ -51,7 +51,7 @@ class RealMotor(BaseMotor):
         self.buffer.extend( [0.0] * max(1, self.delay) )
 
         bias = self.rng.uniform(-self.asymmetry, self.asymmetry)
-        self.max_torque = self.base_max_torque + (1.0 + bias)
+        self.max_torque = self.base_max_torque * (1.0 + bias)
         self.deadband = self.deadband_ratio * self.max_torque
 
 
