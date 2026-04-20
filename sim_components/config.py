@@ -12,10 +12,14 @@ class RunMode(Enum):
 class ControllerType(Enum): 
     PID = auto()
     CONTROLLER_PHYSICAL = auto()
-class SensorType(Enum): 
+class ImuType(Enum): 
     IDEAL = auto()
     IMU_NOISY = auto()
     IMU_PHYSICAL = auto()
+class EncoderType(Enum):
+    IDEAL = auto()
+    NOISY = auto()
+
 class MotorType(Enum):
     IDEAL = auto()
     REAL = auto()
@@ -66,7 +70,8 @@ class SimConfig:
 class AppConfig:
     mode: RunMode = RunMode.SIMULATION
     controller: ControllerType = ControllerType.PID
-    sensor: SensorType = SensorType.IDEAL
+    sensor_imu: ImuType = ImuType.IDEAL
+    sensor_encoder: EncoderType = EncoderType.IDEAL
     motors: MotorType = MotorType.REAL
 
     # default values
@@ -77,7 +82,8 @@ class AppConfig:
 @dataclass
 class RobotConfig:
     controller: Any
-    sensor: Any
+    sensor_imu: Any
+    sensor_encoder: Any
     motors: list[Any]
 
 

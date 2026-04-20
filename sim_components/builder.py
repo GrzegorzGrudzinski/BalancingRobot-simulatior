@@ -2,9 +2,9 @@
 '''
     builder.py
 '''
-from sim_components.config import AppConfig, ControllerType, SensorType, MotorType
+from sim_components.config import AppConfig, ControllerType, ImuType, EncoderType, MotorType
 from sim_components.controllers import PID
-from sim_components.sensors import IdealSensor, NoisySensor
+from sim_components.sensors import IdealIMU, NoisyIMU, IdealEncoder, NoisyEncoder
 from sim_components.motors import IdealMotor, RealMotor, FOCMotor
 
 
@@ -13,9 +13,13 @@ class RobotBuilder:
         ControllerType.PID: lambda cfg: PID(cfg.max_output, cfg.pid_kp, cfg.pid_ki, cfg.pid_kd),
     }
 
-    _SENSORS = {
-        SensorType.IDEAL:       lambda: IdealSensor(), 
-        SensorType.IMU_NOISY:   lambda: NoisySensor(alpha=0.87),
+    _SENSORS_IMU = {
+        ImuType.IDEAL:       lambda: IdealIMU(), 
+        ImuType.IMU_NOISY:   lambda: NoisyIMU(alpha=0.87),
+    }
+    _SENSORS_ENCODER = {
+        EncoderType.IDEAL:   lambda: IdealEncoder(),
+        EncoderType.NOISY:   lambda: NoisyEncoder(),
     }
 
     _MOTORS = {
@@ -38,9 +42,15 @@ class RobotBuilder:
         return builder(config.ctrl_params)
 
     @classmethod
-    def create_sensor(cls, config: AppConfig):
-        builder = cls._SENSORS.get(config.sensor)
-        if not builder: raise ValueError(f"No implementation for {config.sensor}")
+    def create_imu_sensor(cls, config: AppConfig):
+        builder = cls._SENSORS_IMU.get(config.sensor_imu)
+        if not builder: raise ValueError(f"No implementation for {config.sensor_imu}")
+        return builder()
+
+    @classmethod
+    def create_encoder_sensor(cls, config: AppConfig):
+        builder = cls._SENSORS_ENCODER.get(config.sensor_encoder)
+        if not builder: raise ValueError(f"No implementation for {config.sensor_encoder}")
         return builder()
 
     @classmethod

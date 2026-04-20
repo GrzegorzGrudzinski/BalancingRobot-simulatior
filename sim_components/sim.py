@@ -96,7 +96,7 @@ class Simulation:
             
             if self._camera_tracking:
                 self.update_camera_tracking()
-
+    
             if step % 10 == 0:
                 self._robot.draw_debug_data()
 

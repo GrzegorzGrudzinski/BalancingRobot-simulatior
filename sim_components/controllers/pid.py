@@ -3,7 +3,7 @@
 '''
 
 import numpy as np
-from sim_components.controllers.base import BaseController
+from sim_components.controllers.base_controller import BaseController
 
 class PID(BaseController):
     def __init__(self, max_output: float, Kp: float = 1.0, Ki: float = 0.0, Kd: float = 0.0):

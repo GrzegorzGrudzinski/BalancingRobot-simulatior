@@ -32,7 +32,7 @@ class Robot:
         ]
 
         self._setup_dynamics()
-        self._config.sensor.reset(np.deg2rad(start_pitch))
+        self._config.sensor_imu.reset(np.deg2rad(start_pitch))
         self._free_motors()
 
         # Debug
@@ -90,7 +90,7 @@ class Robot:
         self._position = self._start_pos
 
         start_angle = p.getEulerFromQuaternion(self._start_orientation)[self._y_axis_num]
-        self._config.sensor.reset(start_angle)
+        self._config.sensor_imu.reset(start_angle)
         self._config.controller.reset()
 
         for motor in self._config.motors:
@@ -125,7 +125,7 @@ class Robot:
     def update(self) -> None:
         """ Main robot function """
         
-        angle = self._config.sensor.read(self._id, self._y_axis_num)
+        angle = self._config.sensor_imu.read(self._id, self._y_axis_num)
         setpoint = 0.0
         
         motor_val = self._config.controller.compute(setpoint, angle, self._dt)

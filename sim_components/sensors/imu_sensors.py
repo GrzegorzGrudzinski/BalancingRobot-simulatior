@@ -1,16 +1,8 @@
 import pybullet as p
 import numpy as np
-from abc import ABC, abstractmethod
+from sim_components.sensors.base_sensor import BaseIMU
 
-class BaseSensor(ABC):
-    @abstractmethod
-    def read(self, robot_id: int, y_axis_num: int = 0) -> float:
-        pass
-    
-    def reset(self, initial_angle: float) -> None:
-        pass
-
-class IdealSensor(BaseSensor):
+class IdealIMU(BaseIMU):
     def __init__(self):
         pass
     def read(self, robot_id: int, y_axis_num: int = 0) -> float:
@@ -20,7 +12,7 @@ class IdealSensor(BaseSensor):
     def reset(self, initial_angle: float) -> None:
         pass
 
-class NoisySensor(BaseSensor):
+class NoisyIMU(BaseIMU):
     def __init__(self, alpha: float = 0.85):
         self.rng = np.random.default_rng()
         self.alpha = alpha  # filter value
