@@ -29,7 +29,8 @@ class MotorType(Enum):
 
 @dataclass
 class MotorConfig:
-    MAX_TORQUE: float = 0.023
+    # MAX_TORQUE: float = 0.023
+    MAX_TORQUE: float = 0.08
     MAX_VEL: float = 40.0
 
     KV_RATING: float = 360.0

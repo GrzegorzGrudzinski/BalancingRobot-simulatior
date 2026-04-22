@@ -37,7 +37,10 @@ class AppRunner:
         sim.enable_wireframe(self.config.sim_params.show_wireframe)
         sim.enable_camera_tracking(self.config.sim_params.camera_tracking)
 
-        robot = Robot("robot.urdf", config=self.robot_cfg, scale=1)
+        # BASE_PATH = 
+        URDF_PATH = "./robot.urdf"
+
+        robot = Robot(URDF_PATH, config=self.robot_cfg, scale=1)
         robot.enable_com_display(self.config.sim_params.show_com)
         
         

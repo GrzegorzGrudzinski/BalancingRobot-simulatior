@@ -32,15 +32,15 @@ if __name__ == "__main__":
     config.sim_params.disturb_force = 40
     config.sim_params.disturb_interval = 600
 
-    # config.motor_params.MAX_TORQUE = 0.0
+    config.motor_params.MAX_TORQUE = 0.1
     # config.motor_params.DELAY = 0
     # config.motor_params.ASYMMETRY = 0
     # config.motor_params.NOISE  = 0
     # config.motor_params.DEADBAND_RATIO  = 0
 
-    config.ctrl_params.pid_kp = 40
-    # config.ctrl_params.pid_ki = 0.5
-    # config.ctrl_params.pid_kd = 0.5  
+    config.ctrl_params.pid_kp = 400
+    # config.ctrl_params.pid_ki = 0.1
+    # config.ctrl_params.pid_kd = 0.01  
 
     app = AppRunner(config)
     app.run()

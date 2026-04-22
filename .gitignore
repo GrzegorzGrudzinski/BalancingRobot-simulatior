@@ -3,3 +3,5 @@ build
 Debug
 *.part
 *.pyc
+
+README.md
