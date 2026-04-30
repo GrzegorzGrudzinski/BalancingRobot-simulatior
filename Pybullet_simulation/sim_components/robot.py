@@ -31,6 +31,8 @@ class Robot:
             if p.getJointInfo(self._id, i)[2] != p.JOINT_FIXED
         ]
 
+        self._max_angle = 70
+
         self._setup_dynamics()
         self._config.sensor_imu.reset(np.deg2rad(start_pitch))
         self._free_motors()
@@ -132,8 +134,11 @@ class Robot:
         self._control_motors([-motor_val, motor_val])
 
         # Reset when fallen
-        if abs(angle) > np.deg2rad(70):
+        if abs(angle) > np.deg2rad(self._max_angle):
             self._reset_position()
+
+    def test_motors(self):
+        pass
 
     '''
     Debug functions

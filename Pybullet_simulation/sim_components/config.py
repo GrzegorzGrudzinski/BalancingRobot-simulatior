@@ -1,5 +1,7 @@
 '''
     config.py
+
+    Configure app parameters
 '''
 
 from dataclasses import dataclass, field
@@ -19,7 +21,6 @@ class ImuType(Enum):
 class EncoderType(Enum):
     IDEAL = auto()
     NOISY = auto()
-
 class MotorType(Enum):
     IDEAL = auto()
     REAL = auto()
@@ -35,7 +36,7 @@ class MotorConfig:
 
     KV_RATING: float = 360.0
     VOLTAGE: float = 12.0
-    TORQUE_CONSTANT: float = 8.27 / 360.0 
+    TORQUE_CONSTANT: float = field(init=False)
     
     # FOC
     FOC_BANDWIDTH_HZ: float = 200.0 #
@@ -45,6 +46,9 @@ class MotorConfig:
     NOISE: float = 0.1
     ASYMMETRY: float = 0.1
     DELAY: int = 5 # (sim steps)
+
+    def __post_init__(self):
+        self.TORQUE_CONSTANT = 8.27 / self.KV_RATING
 
 
 @dataclass
@@ -75,10 +79,18 @@ class AppConfig:
     sensor_encoder: EncoderType = EncoderType.IDEAL
     motors: MotorType = MotorType.REAL
 
+    motor_profile: str = "generic_bldc"
+
     # default values
     ctrl_params: ControllerConfig = field(default_factory=ControllerConfig)
     sim_params: SimConfig = field(default_factory=SimConfig)
-    motor_params: MotorConfig = field(default_factory=MotorConfig)
+    # motor_params: MotorConfig = field(default_factory=MotorConfig)
+    @property
+    def motor_params(self):
+        from sim_components.motors.motor_profiles import MOTOR_PROFILES
+        temp = MOTOR_PROFILES.get(self.motor_profile)
+        if not temp: raise ValueError(f"No implementation for {self.motor_profile}")         
+        return temp   
 
 @dataclass
 class RobotConfig:

@@ -5,7 +5,7 @@
 from sim_components.config import AppConfig, ControllerType, ImuType, EncoderType, MotorType
 from sim_components.controllers import PID
 from sim_components.sensors import IdealIMU, NoisyIMU, IdealEncoder, NoisyEncoder
-from sim_components.motors import IdealMotor, RealMotor, FOCMotor
+from sim_components.motors.motor_types import IdealMotor, RealMotor, FOCMotor
 
 
 class RobotBuilder:
