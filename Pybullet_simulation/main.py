@@ -22,7 +22,7 @@ if __name__ == "__main__":
     # config.motor_params.MAX_TORQUE = 0.1
     # config.motor_params.DELAY = 0
     # config.motor_params.ASYMMETRY = 0
-    # config.motor_params.NOISE  = 0
+    config.motor_params.NOISE  = 0
     # config.motor_params.DEADBAND_RATIO  = 0
 
     config.ctrl_params.pid_kp = 40

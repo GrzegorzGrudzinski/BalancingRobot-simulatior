@@ -1,5 +1,7 @@
 '''
     runner.py
+
+    run the app
 '''
 
 from sim_components.config import AppConfig, RunMode, RobotConfig

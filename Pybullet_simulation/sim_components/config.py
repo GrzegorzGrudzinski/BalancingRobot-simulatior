@@ -97,7 +97,7 @@ class RobotConfig:
     controller: Any
     sensor_imu: Any
     sensor_encoder: Any
-    motors: list[Any]
+    motors: Any
 
 
 

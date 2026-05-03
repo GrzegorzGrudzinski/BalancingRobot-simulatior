@@ -12,5 +12,6 @@ MOTOR_PROFILES: dict[str, MotorConfig] = {
         VOLTAGE=12 ,
         MAX_TORQUE=0.08 ,
         DEADBAND_RATIO=0.02 ,
+        # MAX_I = 1 # A
     ),
 }

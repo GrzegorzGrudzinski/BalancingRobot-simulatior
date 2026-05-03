@@ -94,9 +94,7 @@ class Robot:
         start_angle = p.getEulerFromQuaternion(self._start_orientation)[self._y_axis_num]
         self._config.sensor_imu.reset(start_angle)
         self._config.controller.reset()
-
-        for motor in self._config.motors:
-            motor.reset()
+        self._config.motors.reset()
 
     '''
     Motor and Control functions
@@ -111,8 +109,13 @@ class Robot:
         )
 
     def _control_motors(self, target_val: list[float], mode: int = p.TORQUE_CONTROL) -> None:
+        # l_pos, r_pos, l_vel, r_vel
+        encoder_val = self._config.sensor_encoder.read_all(self._id, self._joint_indices)
+        
+        self._config.motors.move(target_val, self._id, self._joint_indices)
+        '''
         torque = [
-            motor.move(val) 
+            motor.move(val, encoder_val= encoder_val) 
             for motor, val in zip(self._config.motors, target_val)
         ]
         
@@ -123,9 +126,17 @@ class Robot:
             # targetVelocities = target_val,
             forces = torque
         )
+        '''
         
     def update(self) -> None:
         """ Main robot function """
+        '''
+        1. Read the angle       -> imu        (noise + bias + moving com)  (ideal / noisy)
+        2. Compute CV           -> controller ()  (pid / lqr / rl etc)
+        3. Read the encoders    -> encoder    (noise+??)  (ideal / noisy)
+        4. Compute motor targets-> driver     (delay, noise)  (open / closed loop)
+        5. Apply and move motors-> motors     (accel, deadband, assymetry)  (ideal / real / foc)
+        '''
         
         angle = self._config.sensor_imu.read(self._id, self._y_axis_num)
         setpoint = 0.0

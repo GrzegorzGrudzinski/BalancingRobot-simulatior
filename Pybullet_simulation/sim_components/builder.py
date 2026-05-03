@@ -1,6 +1,8 @@
 
 '''
     builder.py
+
+    build project with applied configuration
 '''
 from sim_components.config import AppConfig, ControllerType, ImuType, EncoderType, MotorType
 from sim_components.controllers import PID
@@ -58,7 +60,7 @@ class RobotBuilder:
         builder = cls._MOTORS.get(config.motors)
         if not builder: raise ValueError(f"No implementation for {config.motors}")
         
-        motor_left = builder(config.motor_params)
-        motor_right = builder(config.motor_params)
-        
-        return [motor_left, motor_right]
+        # motor_left = builder(config.motor_params)
+        # motor_right = builder(config.motor_params)
+        # return [motor_left, motor_right]
+        return builder(config.motor_params)
