@@ -26,7 +26,17 @@ class MotorType(Enum):
     REAL = auto()
     #
     BLDC_FOC = auto() 
+class DriverType(Enum):
+    OPEN_LOOP = auto()
+    CLOSED_LOOP = auto()
 
+@dataclass
+class ControllerConfig:
+    """Global parameters for every controller"""
+    pid_kp: float = 15.0
+    pid_ki: float = 0.0
+    pid_kd: float = 1.0
+    max_output: float = 40.0 # MotorConfig.MAX_VEL
 
 @dataclass
 class MotorConfig:
@@ -50,16 +60,6 @@ class MotorConfig:
     def __post_init__(self):
         self.TORQUE_CONSTANT = 8.27 / self.KV_RATING
 
-
-@dataclass
-class ControllerConfig:
-    """Global parameters for every controller"""
-    pid_kp: float = 15.0
-    pid_ki: float = 0.0
-    pid_kd: float = 1.0
-    max_output: float = 40.0 # MotorConfig.MAX_VEL
-
-
 @dataclass
 class SimConfig:
     """Environment settings"""
@@ -70,6 +70,8 @@ class SimConfig:
     # external disturbances 
     disturb_force: float = 30.0
     disturb_interval: int = 200
+    disturb_time: int = 0
+
 
 @dataclass
 class AppConfig:
@@ -77,26 +79,29 @@ class AppConfig:
     controller: ControllerType = ControllerType.PID
     sensor_imu: ImuType = ImuType.IDEAL
     sensor_encoder: EncoderType = EncoderType.IDEAL
-    motors: MotorType = MotorType.REAL
+    driver: DriverType = DriverType.OPEN_LOOP
+    motors: MotorType = MotorType.IDEAL
 
     motor_profile: str = "generic_bldc"
 
     # default values
-    ctrl_params: ControllerConfig = field(default_factory=ControllerConfig)
     sim_params: SimConfig = field(default_factory=SimConfig)
-    # motor_params: MotorConfig = field(default_factory=MotorConfig)
-    @property
-    def motor_params(self):
-        from sim_components.motors.motor_profiles import MOTOR_PROFILES
-        temp = MOTOR_PROFILES.get(self.motor_profile)
-        if not temp: raise ValueError(f"No implementation for {self.motor_profile}")         
-        return temp   
+    ctrl_params: ControllerConfig = field(default_factory=ControllerConfig)
+    # driver_params: MotorConfig = field(default_factory=MotorConfig)
+    motor_params: MotorConfig = field(default_factory=MotorConfig)
+    # @property
+    # def motor_params(self):
+    #     from sim_components.motors.motor_profiles import MOTOR_PROFILES
+    #     temp = MOTOR_PROFILES.get(self.motor_profile)
+    #     if not temp: raise ValueError(f"No implementation for {self.motor_profile}")         
+    #     return temp   
 
 @dataclass
 class RobotConfig:
     controller: Any
     sensor_imu: Any
     sensor_encoder: Any
+    driver: Any
     motors: Any
 
 

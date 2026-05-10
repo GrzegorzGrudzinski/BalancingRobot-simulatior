@@ -1,4 +1,4 @@
-from .config import AppConfig, RunMode, ControllerType, ImuType, EncoderType, MotorType
+from .config import AppConfig, RunMode, ControllerType, ImuType, EncoderType, DriverType, MotorType
 
 __all__ = [
     "AppConfig", 
@@ -6,5 +6,6 @@ __all__ = [
     "ControllerType", 
     "ImuType", 
     "EncoderType", 
+    "DriverType",
     "MotorType"    
 ]

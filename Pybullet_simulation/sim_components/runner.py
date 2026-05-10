@@ -14,12 +14,14 @@ class AppRunner:
         self.controller = RobotBuilder.create_controller(config)
         self.sensor_imu = RobotBuilder.create_imu_sensor(config)
         self.sensor_encoder = RobotBuilder.create_encoder_sensor(config)
+        self.driver = RobotBuilder.create_driver(config)
         self.motors = RobotBuilder.create_motor(config)
 
         self.robot_cfg = RobotConfig(
             controller= self.controller,
             sensor_imu= self.sensor_imu,
             sensor_encoder= self.sensor_encoder,
+            driver= self.driver,
             motors = self.motors
         )
 

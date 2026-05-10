@@ -4,9 +4,10 @@
 
     build project with applied configuration
 '''
-from sim_components.config import AppConfig, ControllerType, ImuType, EncoderType, MotorType
+from sim_components import *    # config
 from sim_components.controllers import PID
 from sim_components.sensors import IdealIMU, NoisyIMU, IdealEncoder, NoisyEncoder
+from sim_components.motors.motor_drivers import SimpleDriver
 from sim_components.motors.motor_types import IdealMotor, RealMotor, FOCMotor
 
 
@@ -22,6 +23,11 @@ class RobotBuilder:
     _SENSORS_ENCODER = {
         EncoderType.IDEAL:   lambda: IdealEncoder(),
         EncoderType.NOISY:   lambda: NoisyEncoder(),
+    }
+
+    _DRIVERS = {
+        DriverType.OPEN_LOOP:   lambda: SimpleDriver(),
+        DriverType.CLOSED_LOOP: lambda: SimpleDriver(),
     }
 
     _MOTORS = {
@@ -53,6 +59,12 @@ class RobotBuilder:
     def create_encoder_sensor(cls, config: AppConfig):
         builder = cls._SENSORS_ENCODER.get(config.sensor_encoder)
         if not builder: raise ValueError(f"No implementation for {config.sensor_encoder}")
+        return builder()
+    
+    @classmethod
+    def create_driver(cls, config: AppConfig):
+        builder = cls._DRIVERS.get(config.driver)
+        if not builder: raise ValueError(f"No implementation for {config.driver}")
         return builder()
 
     @classmethod
