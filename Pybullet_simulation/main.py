@@ -13,21 +13,27 @@ if __name__ == "__main__":
         controller= ControllerType.PID,
         sensor_imu= ImuType.IMU_NOISY,
         sensor_encoder= EncoderType.IDEAL,
+        driver= DriverType.OPEN_LOOP,
         motors= MotorType.REAL,
         motor_profile="bldc_5010_360kV"
     )
-    config.sim_params.disturb_force = 40
-    config.sim_params.disturb_interval = 600
+    config.sim_params.camera_tracking = True
+    
+    # config.sim_params.
+    config.sim_params.disturb_force = 6
+    config.sim_params.disturb_interval = 500 # dodać długość zakłucenia
+    config.sim_params.disturb_time = 200
 
-    # config.motor_params.MAX_TORQUE = 0.1
+
+    config.motor_params.MAX_TORQUE = 1
     # config.motor_params.DELAY = 0
     # config.motor_params.ASYMMETRY = 0
     config.motor_params.NOISE  = 0
     # config.motor_params.DEADBAND_RATIO  = 0
 
-    config.ctrl_params.pid_kp = 40
-    config.ctrl_params.pid_ki = 0.5
-    config.ctrl_params.pid_kd = 0.5
+    config.ctrl_params.pid_kp = 0.65
+    config.ctrl_params.pid_ki = 0.001
+    config.ctrl_params.pid_kd = 0.001
 
     app = AppRunner(config)
     app.run()
@@ -46,4 +52,6 @@ resetPos:
     - add a STOP signal for robot
 setPID:
     - sim / MCU    
+
+    #dodać czas trwania zakłócenia
 '''

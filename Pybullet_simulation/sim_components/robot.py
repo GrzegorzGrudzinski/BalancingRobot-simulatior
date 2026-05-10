@@ -70,11 +70,6 @@ class Robot:
         # todo - losowanie roznych czesci robota ??
         pos = self.position
         p.applyExternalForce(self._id, -1, forceObj=force, posObj=pos, flags=p.WORLD_FRAME)
-        
-        # Draw the force vector
-        scale = 0.05 
-        end_pos = [pos[0] + force[0] * scale, pos[1] + force[1] * scale, pos[2] + force[2] * scale]
-        p.addUserDebugLine(pos, end_pos, [1, 0.5, 0], 4, 0.5)
 
                 
     def _reset_position(self, pos = None, orn = None) -> None:
@@ -131,18 +126,19 @@ class Robot:
     def update(self) -> None:
         """ Main robot function """
         '''
-        1. Read the angle       -> imu        (noise + bias + moving com)  (ideal / noisy)
-        2. Compute CV           -> controller ()  (pid / lqr / rl etc)
+     -  1. Read the angle       -> imu        (noise + bias + moving com)  (ideal / noisy)
+     -  2. Compute CV           -> controller ()  (pid / lqr / rl etc)
         3. Read the encoders    -> encoder    (noise+??)  (ideal / noisy)
         4. Compute motor targets-> driver     (delay, noise)  (open / closed loop)
-        5. Apply and move motors-> motors     (accel, deadband, assymetry)  (ideal / real / foc)
+     -  5. Apply and move motors-> motors     (accel, deadband, assymetry)  (ideal / real / foc)
         '''
-        
+
         angle = self._config.sensor_imu.read(self._id, self._y_axis_num)
-        setpoint = 0.0
         
-        motor_val = self._config.controller.compute(setpoint, angle, self._dt)
-        self._control_motors([-motor_val, motor_val])
+        setpoint = 0.0
+        target_val = self._config.controller.compute(setpoint, angle, self._dt)
+        
+        self._control_motors([-target_val, target_val])
 
         # Reset when fallen
         if abs(angle) > np.deg2rad(self._max_angle):
