@@ -39,14 +39,21 @@ The environment is initialized via `AppConfig` in `main.py`, allowing fine-tunin
 * [x] External disturbances with configurable duration.
 * [x] Auto-reset mechanism when the robot falls (exceeds max angle).
 
-### To Do
-
-- [ ] **Advanced motor control:** Implement a virtual motor control algorithms (`driver class`) and add detailed motor parameters (e.g., acceleration profiles, electrical time constants).
+### To Do (Important)
+- [ ] Add position regulator with angle output
+- [ ] Improve robot physics (carpet effect, acceleration, masses?)
 - [ ] **Encoder Refinement:** Improve the virtual encoder models (e.g., ABI signal emulation, resolution limits, and realistic noise).
+* [ ] **State Synchronization:** Implement `updatePos` (Sim/IMU) and `resetPos` with a STOP signal for the physical robot.
+- [ ] **Simulation Analytics & Telemetry:** Add built-in data logging and analysis tools to evaluate controller performance over time:
+    - [ ] Max angle
+    - [ ] Max disturbing force
+    - [ ] Stabilisation time
+    - [ ] Max deviation from the center
+  
+### To Do (Less important)
+- [ ] **Advanced motor control:** Implement a virtual motor control algorithms (`driver class`) and add detailed motor parameters (e.g., acceleration profiles, electrical time constants).
 * [ ] **Sim-to-Real Messaging:** Add a communication system to interact with the physical robot (Hardware-in-the-Loop).
 * [ ] **Close sim2real gap**
-* [ ] **State Synchronization:** Implement `updatePos` (Sim/IMU) and `resetPos` with a STOP signal for the physical robot.
-- [ ] **Simulation Analytics & Telemetry:** Add built-in data logging and analysis tools to evaluate controller performance over time.
 - [ ] **GUI Dashboard:** Develop a Graphical User Interface for real-time monitoring, state visualization, and live parameter tuning.
 - [ ] **Advanced Control & AI:** Implement alternative control strategies (e.g., LQR, MPC) and explore Reinforcement Learning (RL) agents for balancing.
 * [ ] **Remote Tuning:** Allow updating PID parameters dynamically between Sim and MCU.
