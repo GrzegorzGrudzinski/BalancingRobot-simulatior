@@ -58,6 +58,13 @@ class Simulation:
         self._disturb_interval = interval_steps
         self._disturb_time = time_steps
 
+    def reset_disturbances(self) -> None:
+        """  """
+        self._temp_disturb_time = 0
+        self._temp_force = 0
+        p.removeUserDebugItem(self._disturbance_line_id)
+        self._disturbance_line_id = -1
+
     def start(self) -> None:
         self._is_running = True
 
@@ -66,8 +73,8 @@ class Simulation:
 
     def _start_disturbance(self):
         if self._robot and self._disturb_force > 0:
-            self._temp_disturb_time = int(np.random.uniform(10,
-                                                            max(11,self._disturb_time)))
+            self._temp_disturb_time = int(np.random.uniform(0,
+                                                            max(0,self._disturb_time)))
             self._temp_force = np.random.uniform(-self._disturb_force,
                                                  self._disturb_force, 
                                                  size=3).tolist()
@@ -77,7 +84,7 @@ class Simulation:
             if self._robot and self._temp_disturb_time > 0:
                 self._robot.apply_disturbance(self._temp_force)
                 self._temp_disturb_time -= 1
-
+                
                 # Draw the force vector
                 pos = self._robot.position
                 scale = 0.05 
@@ -136,9 +143,12 @@ class Simulation:
                 self._robot.draw_debug_data()
 
             # Disturbances
-            if self._disturb_force > 0 and step % self._disturb_interval == 0:
-                self._start_disturbance()
-            self._apply_disturbance()
+            if self._robot.reset_flag:
+                self.reset_disturbances()
+            else:
+                if self._disturb_force > 0 and step % self._disturb_interval == 0:
+                    self._start_disturbance()
+                self._apply_disturbance()
 
             p.stepSimulation()
             time.sleep(self._timestep)

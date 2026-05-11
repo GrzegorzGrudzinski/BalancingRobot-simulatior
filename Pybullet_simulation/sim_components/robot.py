@@ -42,6 +42,8 @@ class Robot:
         #
         self._dt = 1.0 / 240.0
 
+        self.reset_flag = 0
+
     def _setup_dynamics(self) -> None:
         """ Some physical parameters of the robot """
         # mass_variance = rng.uniform(0.9, 1.1)
@@ -91,6 +93,10 @@ class Robot:
         self._config.controller.reset()
         self._config.motors.reset()
 
+        self.reset_flag = 1
+
+        
+
     '''
     Motor and Control functions
     '''
@@ -132,7 +138,7 @@ class Robot:
         4. Compute motor targets-> driver     (delay, noise)  (open / closed loop)
      -  5. Apply and move motors-> motors     (accel, deadband, assymetry)  (ideal / real / foc)
         '''
-
+        self.reset_flag = 0
         angle = self._config.sensor_imu.read(self._id, self._y_axis_num)
         
         setpoint = 0.0
@@ -143,6 +149,8 @@ class Robot:
         # Reset when fallen
         if abs(angle) > np.deg2rad(self._max_angle):
             self._reset_position()
+        else:
+            self.reset_flag = 0
 
     def test_motors(self):
         pass

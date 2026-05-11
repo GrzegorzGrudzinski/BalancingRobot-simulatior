@@ -50,7 +50,9 @@ class AppRunner:
         
         sim.attach_robot(robot)
         sim.set_disturbances(force=self.config.sim_params.disturb_force, 
-                             interval_steps=self.config.sim_params.disturb_interval)
+                             interval_steps=self.config.sim_params.disturb_interval,
+                             time_steps=self.config.sim_params.disturb_time
+                             )
 
         sim.start()
         sim.run(max_steps=10000, freq=200)
