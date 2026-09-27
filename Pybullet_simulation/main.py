@@ -20,12 +20,12 @@ if __name__ == "__main__":
     config.sim_params.camera_tracking = True
     
     # config.sim_params.
-    config.sim_params.disturb_force = 6
-    config.sim_params.disturb_interval = 200 # dodać długość zakłucenia
-    config.sim_params.disturb_time = 2000
+    config.sim_params.disturb_force = 2
+    config.sim_params.disturb_interval = 200 
+    config.sim_params.disturb_time = 20
 
 
-    config.motor_params.MAX_TORQUE = 1
+    config.motor_params.MAX_TORQUE = 2
     # config.motor_params.DELAY = 0
     # config.motor_params.ASYMMETRY = 0
     config.motor_params.NOISE  = 0

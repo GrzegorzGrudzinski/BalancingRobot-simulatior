@@ -13,6 +13,7 @@ class RunMode(Enum):
     PHYSICAL = auto()
 class ControllerType(Enum): 
     PID = auto()
+    CASCADE_PID = auto()
     CONTROLLER_PHYSICAL = auto()
 class ImuType(Enum): 
     IDEAL = auto()
@@ -36,7 +37,13 @@ class ControllerConfig:
     pid_kp: float = 15.0
     pid_ki: float = 0.0
     pid_kd: float = 1.0
+    
+    pid_ang_Kp: float = 1.0
+    pid_ang_Ki: float = 0.0
+    pid_ang_Kd: float = 0.0
+    
     max_output: float = 40.0 # MotorConfig.MAX_VEL
+    max_pitch_angle: float = 15.0
 
 @dataclass
 class MotorConfig:
