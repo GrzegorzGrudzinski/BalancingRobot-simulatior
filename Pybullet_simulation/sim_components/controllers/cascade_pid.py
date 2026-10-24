@@ -48,7 +48,7 @@ class CascadePID(BaseController):
         
         return torque
 
-    def reset(self):
+    def reset(self, initial_value: float = 0.0):
         """Resetuje pamięć całkowania obu kontrolerów."""
-        self.position_pid.reset()
-        self.angle_pid.reset()
+        self.position_pid.reset(initial_value)
+        self.angle_pid.reset(initial_value)

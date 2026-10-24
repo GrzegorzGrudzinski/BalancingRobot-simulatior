@@ -13,8 +13,8 @@ class IdealIMU(BaseIMU):
         pass
 
 class NoisyIMU(BaseIMU):
-    def __init__(self, alpha: float = 0.85):
-        self.rng = np.random.default_rng()
+    def __init__(self, alpha: float = 0.85, rng=None):
+        self.rng = rng if rng is not None else np.random.default_rng()
         self.alpha = alpha  # filter value
         self._sensor_bias = 0.0
         self._y_angle = 0.0

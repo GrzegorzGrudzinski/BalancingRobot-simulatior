@@ -7,5 +7,5 @@ class BaseController(ABC):
         pass
     
     @abstractmethod
-    def reset(self) -> None:
+    def reset(self, initial_value: float = 0.0) -> None:
         pass

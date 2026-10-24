@@ -18,8 +18,7 @@ class PID(BaseController):
         self.last_input = 0.0 
 
     def compute(self, setpoint: float, current_value: float, dt: float) -> float:
-        sp = np.deg2rad(setpoint)
-        error = sp - current_value
+        error = setpoint - current_value
         
         P = self.Kp * error
         
@@ -39,6 +38,6 @@ class PID(BaseController):
         self.last_input = current_value
         return output
 
-    def reset(self):
+    def reset(self, initial_value: float = 0.0):
         self.integral = 0.0
-        self.last_input = 0.0
+        self.last_input = initial_value

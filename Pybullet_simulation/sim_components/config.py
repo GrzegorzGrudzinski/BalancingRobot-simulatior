@@ -26,7 +26,6 @@ class MotorType(Enum):
     IDEAL = auto()
     REAL = auto()
     #
-    BLDC_FOC = auto() 
 class DriverType(Enum):
     OPEN_LOOP = auto()
     CLOSED_LOOP = auto()
@@ -34,38 +33,36 @@ class DriverType(Enum):
 @dataclass
 class ControllerConfig:
     """Global parameters for every controller"""
-    pid_kp: float = 15.0
-    pid_ki: float = 0.0
-    pid_kd: float = 1.0
-    
+    pid_kp: float = 0.8    # [A/deg]       CASCADE_PITCH_KP
+    pid_ki: float = 0.0    # [A/(deg*s)]
+    pid_kd: float = 0.04   # [A/(deg/s)]   CASCADE_PITCH_KD
+
     pid_ang_Kp: float = 1.0
     pid_ang_Ki: float = 0.0
     pid_ang_Kd: float = 0.0
     
-    max_output: float = 40.0 # MotorConfig.MAX_VEL
+    max_output: float = 2.5  # [A] CASCADE_PITCH_MAX_OUT
     max_pitch_angle: float = 15.0
 
 @dataclass
 class MotorConfig:
-    # MAX_TORQUE: float = 0.023
-    MAX_TORQUE: float = 0.08
-    MAX_VEL: float = 40.0
-
+    """Motor input is current [A]; torque = Kt * I - friction."""
     KV_RATING: float = 360.0
-    VOLTAGE: float = 12.0
-    TORQUE_CONSTANT: float = field(init=False)
-    
-    # FOC
-    FOC_BANDWIDTH_HZ: float = 200.0 #
-    
-    #
-    DEADBAND_RATIO: float = 0.02
-    NOISE: float = 0.1
-    ASYMMETRY: float = 0.1
-    DELAY: int = 5 # (sim steps)
+    TORQUE_CONSTANT: float = field(init=False)  # [Nm/A] 8.27 / KV
+    MAX_CURRENT: float = 3.0                    # [A] ESP MOT_LIMIT
 
+    # friction inside the motor, from the coast-down test on the robot; 0 = none
+    VISCOUS_FRICTION: float = 0.0  # [Nm*s/rad]
+    COULOMB_FRICTION: float = 0.0  # [Nm]
+
+    DEADBAND_RATIO: float = 0.0
+    NOISE: float = 0.0             # [A] std per physics step
+    ASYMMETRY: float = 0.05        # +- relative spread of Kt between motors
+    DELAY_STEPS: int = 1  # command delay in physics steps (1 ms); measured STM->ESP rtt ~1.8 ms
     def __post_init__(self):
         self.TORQUE_CONSTANT = 8.27 / self.KV_RATING
+        if not isinstance(self.DELAY_STEPS, int) or self.DELAY_STEPS < 0:
+            raise ValueError("DELAY_STEPS must be an int >= 0 (physics steps)")
 
 @dataclass
 class SimConfig:
@@ -76,9 +73,25 @@ class SimConfig:
     show_com: bool = True
     # external disturbances 
     disturb_force: float = 30.0
-    disturb_interval: int = 200
-    disturb_time: int = 0
+    disturb_interval_s: float = 0.83
+    disturb_time_s: float = 0
+    #
+    # wheel losses inside PyBullet. 
+    joint_damping: float = 0.0       # [Nm*s/rad] torque = -c * joint velocity
+    rolling_friction: float = 0.0    # [m] lever arm, torque = coef * normal force
+    spinning_friction: float = 0.001
+    lateral_friction: float = 1.2
+    friction_variance: float = 0.2   # +- relative spread of lateral friction
 
+    # run
+    gui: bool = True
+    realtime: bool = True        # sleep to keep wall-clock time; False -> as fast as possible
+    seed: int | None = 0         # None -> different random run every time
+    duration_s: float = 60.0
+
+    # start / reset
+    start_pitch_deg: float | None = None  # None -> random in +-start_pitch_range_deg
+    start_pitch_range_deg: float = 3.0    # firmware START_ANGLE
 
 @dataclass
 class AppConfig:

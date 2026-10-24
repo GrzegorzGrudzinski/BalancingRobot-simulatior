@@ -7,21 +7,27 @@ import pybullet as p
 import pybullet_data
 import time
 import numpy as np
+import math # for .isclose
 
 from sim_components.robot import Robot
 
 class Simulation:
-    def __init__(self, timestep:float = 1./240. ) -> None:
-        #
-        self.physicsClient = p.connect(p.GUI)
-        p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
-        p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 1)
+    def __init__(self, timestep: float = 1./1000., gui: bool = True, realtime: bool = True,
+                 rng=None) -> None:
+        self._gui = gui
+        self._realtime = realtime
+        self._rng = rng if rng is not None else np.random.default_rng()
+        self.physicsClient = p.connect(p.GUI if gui else p.DIRECT)
+        if gui:
+            # graphical look only (these calls dont change anything in physocs)
+            p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0) # hide side panels
+            p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 1) # shadows on
+            p.configureDebugVisualizer(p.COV_ENABLE_WIREFRAME, 0) # wireframe off by default
         p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
         p.setGravity(0,0,-9.81)
 
         self._camera_tracking = False
         self._show_wireframe = False 
-        p.configureDebugVisualizer(p.COV_ENABLE_WIREFRAME, 0) # domyślnie wyłączone
         
         self._timestep = timestep
         p.setTimeStep(timestep)
@@ -31,13 +37,17 @@ class Simulation:
         self._is_running = False
 
         self._disturb_force = 0.0
-        self._disturb_interval = 200
-        self._disturb_time = 0
+        self._disturb_interval = 200 # physics steps
+        self._disturb_time = 0 # physics steps
 
         self._temp_force: list[float] = [0.0, 0.0, 0.0]        
         self._temp_disturb_time: int = 0
         self._disturbance_line_id: int = -1 
 
+    @property
+    def timestep(self) -> float: # external access to the timestep
+        return self._timestep
+    
     def enable_camera_tracking(self, enable: bool) -> None:
         self._camera_tracking = enable
 
@@ -52,16 +62,16 @@ class Simulation:
     def attach_robot(self, robot: Robot) -> None:
         self._robot = robot
 
-    def set_disturbances(self, force: float = 0, interval_steps: int = 200, time_steps: int = 0) -> None:
-        """  """
+    def set_disturbances(self, force: float = 0, interval_s: int = 0.83, time_s: int = 0) -> None:
+        """Times in seconds, stored in physics steps."""
         self._disturb_force = force
-        self._disturb_interval = interval_steps
-        self._disturb_time = time_steps
+        self._disturb_interval = max(1, round(interval_s / self._timestep))
+        self._disturb_time = round(time_s / self._timestep)
 
     def reset_disturbances(self) -> None:
         """  """
         self._temp_disturb_time = 0
-        self._temp_force = 0
+        self._temp_force = [0.0, 0.0, 0.0]
         p.removeUserDebugItem(self._disturbance_line_id)
         self._disturbance_line_id = -1
 
@@ -72,35 +82,35 @@ class Simulation:
         self._is_running = False
 
     def _start_disturbance(self):
-        if self._robot and self._disturb_force > 0:
-            self._temp_disturb_time = int(np.random.uniform(0,
+        if self._robot and self._disturb_force > 0: 
+            self._temp_disturb_time = int(self._rng.uniform(0,
                                                             max(0,self._disturb_time)))
-            self._temp_force = np.random.uniform(-self._disturb_force,
+            self._temp_force = self._rng.uniform(-self._disturb_force,
                                                  self._disturb_force, 
                                                  size=3).tolist()
 
+    def _apply_disturbance(self, step: int) -> None:
+        if self._robot and self._temp_disturb_time > 0:
+            self._robot.apply_disturbance(self._temp_force)
+            self._temp_disturb_time -= 1
+            # redraw every 20 ms (debug drawing is slow in GUI mode)
+            if self._gui and (self._disturbance_line_id < 0 or step % 20 == 0):
+                self._draw_disturbance()
+        elif self._disturbance_line_id >= 0:
+            p.removeUserDebugItem(self._disturbance_line_id)
+            self._disturbance_line_id = -1
 
-    def _apply_disturbance(self) -> None:
-            if self._robot and self._temp_disturb_time > 0:
-                self._robot.apply_disturbance(self._temp_force)
-                self._temp_disturb_time -= 1
-                
-                # Draw the force vector
-                pos = self._robot.position
-                scale = 0.05 
-                end_pos = [ pos[0] + self._temp_force[0] * scale, 
-                            pos[1] + self._temp_force[1] * scale, 
-                            pos[2] + self._temp_force[2] * scale ]
-            
-                if self._disturbance_line_id < 0:
-                    self._disturbance_line_id = p.addUserDebugLine(pos, end_pos, lineColorRGB=[1, 0.5, 0], lineWidth=4)
-                else:
-                    self._disturbance_line_id = p.addUserDebugLine(pos, end_pos, lineColorRGB=[1, 0.5, 0], lineWidth=4, replaceItemUniqueId=self._disturbance_line_id)
-
-            # remove the line
-            elif self._disturbance_line_id >= 0:
-                p.removeUserDebugItem(self._disturbance_line_id)
-                self._disturbance_line_id = -1
+    def _draw_disturbance(self) -> None:
+        pos = self._robot.position
+        scale = 0.05
+        end_pos = [pos[i] + self._temp_force[i] * scale for i in range(3)]
+        if self._disturbance_line_id < 0:
+            self._disturbance_line_id = p.addUserDebugLine(
+                pos, end_pos, lineColorRGB=[1, 0.5, 0], lineWidth=4)
+        else:
+            self._disturbance_line_id = p.addUserDebugLine(
+                pos, end_pos, lineColorRGB=[1, 0.5, 0], lineWidth=4,
+                replaceItemUniqueId=self._disturbance_line_id)
 
     def update_camera_tracking(self):
         """Aktualizuje pozycję kamery, aby śledziła robota."""
@@ -125,21 +135,21 @@ class Simulation:
             print("Error: robot not connected")
             return
 
-        dt = 1.0 / freq
-        self._robot.set_dt(dt)
-        time_accumulator = 0.0
+        # controller period must be a whole number of physics steps (5 ms = 5 x 1 ms)
+        ctrl_every = round(1.0 / (freq * self._timestep))
+        if not math.isclose(ctrl_every * self._timestep * freq, 1.0):
+            raise ValueError(f"1/freq is not a multiple of the physics step {self._timestep}")
+        self._robot.set_dt(ctrl_every * self._timestep)
 
+        t_start = time.perf_counter()
         for step in range(max_steps):
-            time_accumulator += self._timestep
-
-            if self._is_running and time_accumulator >= dt:
+            if self._is_running and step % ctrl_every == 0:
                 self._robot.update()
-                time_accumulator -= dt
-            
-            if self._camera_tracking:
+
+            if self._gui and self._camera_tracking and step % 20 == 0:
                 self.update_camera_tracking()
-    
-            if step % 10 == 0:
+
+            if self._gui and step % 10 == 0:
                 self._robot.draw_debug_data()
 
             # Disturbances
@@ -148,10 +158,17 @@ class Simulation:
             else:
                 if self._disturb_force > 0 and step % self._disturb_interval == 0:
                     self._start_disturbance()
-                self._apply_disturbance()
+                self._apply_disturbance(step)
 
+            self._robot.apply_motors()
             p.stepSimulation()
-            time.sleep(self._timestep)
+            # if self._realtime:
+            #     time.sleep(self._timestep)
+
+            if self._realtime:
+                delay = t_start + (step + 1) * self._timestep - time.perf_counter()
+                if delay > 0:
+                    time.sleep(delay)
 
     def disconnect(self):
         p.disconnect()

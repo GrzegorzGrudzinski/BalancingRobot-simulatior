@@ -5,22 +5,22 @@
 import pybullet as p
 import numpy as np
 
-from sim_components.config import RobotConfig
-
-rng = np.random.default_rng()
+from sim_components.config import RobotConfig, SimConfig
 
 class Robot:
-    def __init__(self, urdf_path: str, config: RobotConfig, scale: float = 1) -> None:
+    def __init__(self, urdf_path: str, config: RobotConfig, 
+                 scale: float = 1, rng=None, sim_cfg: SimConfig | None = None) -> None:
         # config
         self._config = config
+        self._sim_cfg = sim_cfg if sim_cfg is not None else SimConfig()
         self._scale = scale
-        self._start_pos = [0,0,1*scale/5]
+        self._start_pos = [0, 0, 0.14 * scale]  
+        self._rng = rng if rng is not None else np.random.default_rng()
         
-        start_pitch = rng.uniform(-5.0, 5.0)
-        self._start_orientation = p.getQuaternionFromEuler([0, np.deg2rad(start_pitch), 0])
+        # start_pitch = self._rng.uniform(-5.0, 5.0)
+        self._start_orientation = self._sample_start_orientation()
+        self._pitch_axis: int = 0  # euler index of rotation about the wheel axis (X)
         self._id = p.loadURDF(urdf_path, self._start_pos, self._start_orientation, globalScaling = scale)
-        
-        self._y_axis_num:int = 0
         self._orientation = self._start_orientation
         self._position = self._start_pos
 
@@ -34,7 +34,9 @@ class Robot:
         self._max_angle = 70
 
         self._setup_dynamics()
-        self._config.sensor_imu.reset(np.deg2rad(start_pitch))
+        start_angle = p.getEulerFromQuaternion(self._start_orientation)[self._pitch_axis]
+        self._config.sensor_imu.reset(start_angle)
+        self._config.controller.reset(np.rad2deg(start_angle))
         self._free_motors()
 
         # Debug
@@ -46,17 +48,25 @@ class Robot:
 
     def _setup_dynamics(self) -> None:
         """ Some physical parameters of the robot """
-        # mass_variance = rng.uniform(0.9, 1.1)
-        friction_variance = rng.uniform(0.8, 1.2)
+        # mass_variance = self._rng.uniform(0.9, 1.1)
+        cfg = self._sim_cfg
+        friction_variance = self._rng.uniform(1 - cfg.friction_variance, 1 + cfg.friction_variance)
 
         for i in self._joint_indices:
             p.changeDynamics(
-                bodyUniqueId=self._id, linkIndex=i, 
-                lateralFriction=1.2 * friction_variance, 
-                rollingFriction=0.01, 
-                spinningFriction=0.01,
-                jointDamping=0.005, linearDamping=0.01, angularDamping=0.01
+                bodyUniqueId=self._id, linkIndex=i,
+                lateralFriction=cfg.lateral_friction * friction_variance,
+                rollingFriction=cfg.rolling_friction,
+                spinningFriction=cfg.spinning_friction,
+                jointDamping=cfg.joint_damping, linearDamping=0.01, angularDamping=0.01
             )
+
+    def _sample_start_orientation(self) -> list[float]:
+        cfg = self._sim_cfg
+        pitch_deg = cfg.start_pitch_deg
+        if pitch_deg is None:
+            pitch_deg = self._rng.uniform(-cfg.start_pitch_range_deg, cfg.start_pitch_range_deg)
+        return p.getQuaternionFromEuler([np.deg2rad(pitch_deg), 0, 0])
 
     @property
     def position(self) -> list[float]:
@@ -80,17 +90,17 @@ class Robot:
 
         # Stop the motors
         if self._joint_indices:
-            self._control_motors([0.0] * len(self._joint_indices))
             for i in self._joint_indices:
                 p.resetJointState(self._id, i, targetValue=0.0, targetVelocity=0.0)
 
+        self._start_orientation = self._sample_start_orientation()
         p.resetBasePositionAndOrientation(self._id, self._start_pos, self._start_orientation)
         self._orientation = self._start_orientation
         self._position = self._start_pos
 
-        start_angle = p.getEulerFromQuaternion(self._start_orientation)[self._y_axis_num]
+        start_angle = p.getEulerFromQuaternion(self._start_orientation)[self._pitch_axis]
         self._config.sensor_imu.reset(start_angle)
-        self._config.controller.reset()
+        self._config.controller.reset(np.rad2deg(start_angle))
         self._config.motors.reset()
 
         self.reset_flag = 1
@@ -110,25 +120,12 @@ class Robot:
         )
 
     def _control_motors(self, target_val: list[float], mode: int = p.TORQUE_CONTROL) -> None:
-        # l_pos, r_pos, l_vel, r_vel
-        encoder_val = self._config.sensor_encoder.read_all(self._id, self._joint_indices)
-        
-        self._config.motors.move(target_val, self._id, self._joint_indices)
-        '''
-        torque = [
-            motor.move(val, encoder_val= encoder_val) 
-            for motor, val in zip(self._config.motors, target_val)
-        ]
-        
-        p.setJointMotorControlArray(
-            self._id, 
-            self._joint_indices, 
-            mode, 
-            # targetVelocities = target_val,
-            forces = torque
-        )
-        '''
-        
+        self._config.motors.command(target_val)        
+
+    def apply_motors(self) -> None:
+        """Call before every stepSimulation(): holds the last command and applies the delay."""
+        self._config.motors.apply(self._id, self._joint_indices)
+
     def update(self) -> None:
         """ Main robot function """
         '''
@@ -139,10 +136,11 @@ class Robot:
      -  5. Apply and move motors-> motors     (accel, deadband, assymetry)  (ideal / real / foc)
         '''
         self.reset_flag = 0
-        angle = self._config.sensor_imu.read(self._id, self._y_axis_num)
+        angle = self._config.sensor_imu.read(self._id, self._pitch_axis)  # [rad]
         
+        # controller works in firmware units: deg in, A out
         setpoint = 0.0
-        target_val = self._config.controller.compute(setpoint, angle, self._dt)
+        target_val = self._config.controller.compute(setpoint, np.rad2deg(angle), self._dt)
         
         self._control_motors([-target_val, target_val])
 
