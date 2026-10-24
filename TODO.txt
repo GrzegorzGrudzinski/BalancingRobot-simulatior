@@ -1,0 +1,11 @@
+
+struct RobotState {
+    float pitch;        // Kąt (rad) z IMU
+    float pitch_rate;   // Prędkość kątowa (rad/s) z IMU
+    float position;     // Pozycja z enkoderów (m)
+    float velocity;     // Prędkość kół (m/s)
+    
+    // Zmienne zadane przez Mastera (z pada / komputera)
+    float target_pos;
+    float target_yaw;
+};
