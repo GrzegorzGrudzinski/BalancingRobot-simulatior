@@ -12,7 +12,7 @@ import math # for .isclose
 from sim_components.robot import Robot
 
 class Simulation:
-    def __init__(self, timestep: float = 1./1000., gui: bool = True, realtime: bool = True,
+    def __init__(self, timestep: float = 1./1000., ctrl_freq: float = 200.0, gui: bool = True, realtime: bool = True,
                  rng=None) -> None:
         self._gui = gui
         self._realtime = realtime
@@ -31,6 +31,12 @@ class Simulation:
         
         self._timestep = timestep
         p.setTimeStep(timestep)
+        # controller period must be a whole number of physics steps (5 ms = 5 x 1 ms)
+        self._ctrl_every = round(1.0 / (ctrl_freq * timestep))
+        if not math.isclose(self._ctrl_every * timestep * ctrl_freq, 1.0):
+            raise ValueError(f"1/ctrl_freq is not a multiple of the physics step {timestep}")
+        self._physics_step = 0 # physics steps counter
+        self._t_start: float | None = None  # wall-clock time of physics step 0 (realtime pacing)
 
         # 
         self._robot: Robot | None = None
@@ -61,6 +67,11 @@ class Simulation:
 
     def attach_robot(self, robot: Robot) -> None:
         self._robot = robot
+        self._robot.set_dt(self._ctrl_every * self._timestep)
+
+    @property
+    def time(self) -> float:
+        return self._physics_step * self._timestep
 
     def set_disturbances(self, force: float = 0, interval_s: int = 0.83, time_s: int = 0) -> None:
         """Times in seconds, stored in physics steps."""
@@ -130,45 +141,62 @@ class Simulation:
             cameraTargetPosition=base_pos
         )
 
-    def run(self, max_steps: int = 10000, freq: float = 100.0) -> None:
+    def step(self, command: tuple[float, float] | None = None) -> dict:
+        """One controller period: controller update + ctrl_every physics steps.
+        command = (out_l, out_r) [A] from outside, None = robot's own controller.
+        Returns the robot state after the period."""
+        self._robot.update(command)
+        if self._robot.reset_flag:
+            self.reset_disturbances()
+
+        if self._t_start is None:  # first call: wall-clock reference for realtime pacing
+            self._t_start = time.perf_counter() - self.time
+
+        for _ in range(self._ctrl_every):
+            if self._disturb_force > 0 and self._physics_step % self._disturb_interval == 0:
+                self._start_disturbance()
+            self._apply_disturbance(self._physics_step)
+
+            self._robot.apply_motors()  # every physics step: zero-order hold + command delay
+            p.stepSimulation()
+            self._physics_step += 1
+            if self._realtime:
+                # sleep until the wall-clock time of the next step (overhead does not accumulate)
+                delay = self._t_start + self.time - time.perf_counter()
+                if delay > 0:
+                    time.sleep(delay)
+                elif delay < -0.1:
+                    # far behind (breakpoint, window dragged): resync instead of fast-forwarding
+                    self._t_start -= delay
+
+        if self._gui:
+            # debug drawing is slow in GUI mode: camera every 20 ms, CoM points every 10 ms
+            if self._camera_tracking and self._physics_step % 20 == 0:
+                self.update_camera_tracking()
+            if self._physics_step % 10 == 0:
+                self._robot.draw_debug_data()
+
+        state = self._robot.read_state()
+        state["time"] = self.time
+        state["fallen"] = self._robot.reset_flag
+        state["measured_pitch"] = np.rad2deg(self._robot.measured_pitch)
+        state["out_l"], state["out_r"] = self._robot.last_out
+        state["disturb_fy"] = self._temp_force[1] if self._temp_disturb_time > 0 else 0.0
+        return state
+
+    def run(self, duration_s: float, logger=None) -> None:
         if not self._robot:
             print("Error: robot not connected")
             return
 
-        # controller period must be a whole number of physics steps (5 ms = 5 x 1 ms)
-        ctrl_every = round(1.0 / (freq * self._timestep))
-        if not math.isclose(ctrl_every * self._timestep * freq, 1.0):
-            raise ValueError(f"1/freq is not a multiple of the physics step {self._timestep}")
-        self._robot.set_dt(ctrl_every * self._timestep)
+        n_periods = round(duration_s / (self._ctrl_every * self._timestep))
+        for _ in range(n_periods):
+            if not self._is_running:
+                break
+            state = self.step()
+            if logger:
+                logger.write(state)
 
-        t_start = time.perf_counter()
-        for step in range(max_steps):
-            if self._is_running and step % ctrl_every == 0:
-                self._robot.update()
-
-            if self._gui and self._camera_tracking and step % 20 == 0:
-                self.update_camera_tracking()
-
-            if self._gui and step % 10 == 0:
-                self._robot.draw_debug_data()
-
-            # Disturbances
-            if self._robot.reset_flag:
-                self.reset_disturbances()
-            else:
-                if self._disturb_force > 0 and step % self._disturb_interval == 0:
-                    self._start_disturbance()
-                self._apply_disturbance(step)
-
-            self._robot.apply_motors()
-            p.stepSimulation()
-            # if self._realtime:
-            #     time.sleep(self._timestep)
-
-            if self._realtime:
-                delay = t_start + (step + 1) * self._timestep - time.perf_counter()
-                if delay > 0:
-                    time.sleep(delay)
 
     def disconnect(self):
         p.disconnect()

@@ -88,10 +88,13 @@ class SimConfig:
     realtime: bool = True        # sleep to keep wall-clock time; False -> as fast as possible
     seed: int | None = 0         # None -> different random run every time
     duration_s: float = 60.0
+    log_csv: str | None = None   # path -> CSV in telemetry_frame.py column format
 
     # start / reset
     start_pitch_deg: float | None = None  # None -> random in +-start_pitch_range_deg
     start_pitch_range_deg: float = 3.0    # firmware START_ANGLE
+
+
 
 @dataclass
 class AppConfig:

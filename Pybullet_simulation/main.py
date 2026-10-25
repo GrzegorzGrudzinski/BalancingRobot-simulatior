@@ -26,6 +26,8 @@ if __name__ == "__main__":
     sp.camera_tracking = True if sp.gui == True else False
 
     config.sim_params.start_pitch_deg = None # 5.0
+    config.sim_params.log_csv = "logs/run.csv"   # None -> no log
+
     
     sp.disturb_force = 0
     sp.disturb_interval_s = 0.83 

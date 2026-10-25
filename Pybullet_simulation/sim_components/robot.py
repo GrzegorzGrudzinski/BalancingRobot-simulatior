@@ -7,6 +7,8 @@ import numpy as np
 
 from sim_components.config import RobotConfig, SimConfig
 
+WHEEL_RADIUS = 0.055  # [m] same as firmware config.h, used for position/velocity
+
 class Robot:
     def __init__(self, urdf_path: str, config: RobotConfig, 
                  scale: float = 1, rng=None, sim_cfg: SimConfig | None = None) -> None:
@@ -39,12 +41,14 @@ class Robot:
         self._config.controller.reset(np.rad2deg(start_angle))
         self._free_motors()
 
+        self._dt = 1.0 / 240.0
         # Debug
         self._show_com = False
-        #
-        self._dt = 1.0 / 240.0
-
         self.reset_flag = 0
+
+        self.measured_pitch = start_angle   # [rad] what the controller saw last
+        self.last_out = (0.0, 0.0)          # [A] firmware out_l, out_r
+
 
     def _setup_dynamics(self) -> None:
         """ Some physical parameters of the robot """
@@ -105,8 +109,6 @@ class Robot:
 
         self.reset_flag = 1
 
-        
-
     '''
     Motor and Control functions
     '''
@@ -126,23 +128,40 @@ class Robot:
         """Call before every stepSimulation(): holds the last command and applies the delay."""
         self._config.motors.apply(self._id, self._joint_indices)
 
-    def update(self) -> None:
-        """ Main robot function """
-        '''
-     -  1. Read the angle       -> imu        (noise + bias + moving com)  (ideal / noisy)
-     -  2. Compute CV           -> controller ()  (pid / lqr / rl etc)
-        3. Read the encoders    -> encoder    (noise+??)  (ideal / noisy)
-        4. Compute motor targets-> driver     (delay, noise)  (open / closed loop)
-     -  5. Apply and move motors-> motors     (accel, deadband, assymetry)  (ideal / real / foc)
-        '''
+    def read_state(self) -> dict:
+        """True state from PyBullet in firmware units (deg, deg/s, m, m/s, rad, rad/s)."""
+        pos, orn = p.getBasePositionAndOrientation(self._id)
+        _, ang_vel = p.getBaseVelocity(self._id)
+        wheel_axis = np.array(p.getMatrixFromQuaternion(orn))[[0, 3, 6]]  # body X in world
+        l_pos, r_pos, l_vel, r_vel = self._config.sensor_encoder.read_all(self._id, self._joint_indices)
+        l_pos, l_vel = -l_pos, -l_vel  # wheel axes are mirrored in the URDF
+        return {
+            "pitch": np.rad2deg(p.getEulerFromQuaternion(orn)[self._pitch_axis]),
+            "pitch_rate": np.rad2deg(float(np.dot(ang_vel, wheel_axis))),
+            "position": 0.5 * (l_pos + r_pos) * WHEEL_RADIUS,
+            "velocity": 0.5 * (l_vel + r_vel) * WHEEL_RADIUS,
+            "left_wheel_pos": l_pos, "right_wheel_pos": r_pos,
+            "mot1_vel": l_vel, "mot2_vel": r_vel,
+            "base_x": pos[0], "base_y": pos[1],
+        }
+
+    def update(self, command: tuple[float, float] | None = None) -> None:
+        """ Main robot function. command = (out_l, out_r) [A] from an external controller
+        (SiL, HiL, RL), None = use the built-in controller. """
+        
         self.reset_flag = 0
         angle = self._config.sensor_imu.read(self._id, self._pitch_axis)  # [rad]
+        self.measured_pitch = angle
+
+        if command is None:
+            # controller works in firmware units: deg in, A out
+            setpoint = 0.0
+            u = self._config.controller.compute(setpoint, np.rad2deg(angle), self._dt)
+            command = (u, u)
+        self.last_out = tuple(command)
         
-        # controller works in firmware units: deg in, A out
-        setpoint = 0.0
-        target_val = self._config.controller.compute(setpoint, np.rad2deg(angle), self._dt)
-        
-        self._control_motors([-target_val, target_val])
+        # firmware sends the same sign to both motors, URDF wheel axes are mirrored
+        self._control_motors([-command[0], command[1]])
 
         # Reset when fallen
         if abs(angle) > np.deg2rad(self._max_angle):

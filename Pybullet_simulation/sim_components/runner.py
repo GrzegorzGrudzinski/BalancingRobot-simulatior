@@ -59,9 +59,16 @@ class AppRunner:
                              time_s=self.config.sim_params.disturb_time_s
                             )
 
+        from sim_components.logger import CsvLogger
+        logger = CsvLogger(sp.log_csv) if sp.log_csv else None
+
         sim.start()
-        sim.run(max_steps=int(sp.duration_s / sim.timestep), freq=200)       
-        sim.disconnect()
+        try:
+            sim.run(sp.duration_s, logger=logger)
+        finally:
+            if logger:
+                logger.close()
+            sim.disconnect()
 
     def _run_physical(self):
         pass
