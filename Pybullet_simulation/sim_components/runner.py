@@ -62,9 +62,14 @@ class AppRunner:
         from sim_components.logger import CsvLogger
         logger = CsvLogger(sp.log_csv) if sp.log_csv else None
 
+        controller = None
+        if sp.sil_dir:
+            from sim_components.controllers.c_core import CCoreController
+            controller = CCoreController(sp.sil_dir, friction=sp.sil_friction_comp)
+
         sim.start()
         try:
-            sim.run(sp.duration_s, logger=logger)
+            sim.run(sp.duration_s, logger=logger, controller=controller)
         finally:
             if logger:
                 logger.close()

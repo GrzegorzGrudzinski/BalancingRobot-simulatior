@@ -1,5 +1,6 @@
 '''
     main.py
+    
 
     pybullet simulation
 '''
@@ -11,13 +12,13 @@ if __name__ == "__main__":
     config = AppConfig(
         mode= RunMode.SIMULATION,
         controller= ControllerType.PID,
-        sensor_imu= ImuType.IMU_NOISY,
+        sensor_imu= ImuType.IDEAL,
         sensor_encoder= EncoderType.IDEAL,
         driver= DriverType.OPEN_LOOP,
         motors= MotorType.REAL,
         motor_profile="bldc_5010_360kV"
     )
-
+    
     sp = config.sim_params
     sp.seed = 0                         # None -> different run every time
     sp.duration_s = 30.0
@@ -25,13 +26,16 @@ if __name__ == "__main__":
     # sp.gui, sp.realtime = False, False  # batch run: no window, as fast as possible
     sp.camera_tracking = True if sp.gui == True else False
 
+    sp.sil_dir = "../BalancingRobot-Main-Controller/sil"   # relative to the directory the simulator runs from
+    sp.sil_friction_comp = False                           # True -> 14.12 compensation, as FRIC_COMP_ENABLE
+
     config.sim_params.start_pitch_deg = None # 5.0
     config.sim_params.log_csv = "logs/run.csv"   # None -> no log
 
     
-    sp.disturb_force = 0
-    sp.disturb_interval_s = 0.83 
-    sp.disturb_time_s = 0.083
+    sp.disturb_force = 10
+    sp.disturb_interval_s = 2 # 0.83 
+    sp.disturb_time_s = 0.5 # 0.083
 
     # config.motor_params.VISCOUS_FRICTION = 0.5
     # config.motor_params.COULOMB_FRICTION = 0.5
@@ -48,7 +52,6 @@ if __name__ == "__main__":
 
     app = AppRunner(config)
     app.run()
-
 
 
 '''

@@ -17,6 +17,10 @@ _COLUMNS = [
     ("out_l", "out_l"), ("out_r", "out_r"),
     ("sim_true_pitch", "pitch"), ("sim_base_x", "base_x"), ("sim_base_y", "base_y"),
     ("sim_disturb_fy", "disturb_fy"),
+    # controller internals, only with an external controller (SiL): empty for the Python PID
+    ("target_position", "target_position"), ("position_output", "position_output"),
+    ("velocity_output", "velocity_output"), ("pitch_setpoint", "pitch_setpoint"),
+    ("pitch_output", "pitch_output"), ("i_velocity", "i_velocity"),
 ]
 STATE_BALANCING, STATE_FALLEN = 3, 4  # RobotState_t values
 
@@ -30,7 +34,7 @@ class CsvLogger:
 
     def write(self, state: dict) -> None:
         row = [round(state["time"] * 1000), STATE_FALLEN if state["fallen"] else STATE_BALANCING]
-        row += [f"{state[k]:.6g}" for c, k in _COLUMNS[2:]]
+        row += [f"{state[k]:.6g}" if k in state else "" for c, k in _COLUMNS[2:]]
         self._writer.writerow(row)
 
     def close(self) -> None:

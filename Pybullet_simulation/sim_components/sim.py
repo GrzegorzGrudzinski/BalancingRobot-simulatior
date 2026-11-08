@@ -184,16 +184,26 @@ class Simulation:
         state["disturb_fy"] = self._temp_force[1] if self._temp_disturb_time > 0 else 0.0
         return state
 
-    def run(self, duration_s: float, logger=None) -> None:
+    def run(self, duration_s: float, logger=None, controller=None) -> None:
+        """controller: object with step(state, dt) -> (out_l, out_r), reset() and debug, e.g. CCoreController.
+        None = the robot's own Python controller."""
+
         if not self._robot:
             print("Error: robot not connected")
             return
 
+        dt = self._ctrl_every * self._timestep
         n_periods = round(duration_s / (self._ctrl_every * self._timestep))
+        state = self._robot.read_state()  # what the controller sees before the first period
         for _ in range(n_periods):
             if not self._is_running:
                 break
-            state = self.step()
+            command = controller.step(state, dt) if controller else None
+            state = self.step(command)
+            if controller:
+                state.update(controller.debug)
+                if state["fallen"]:
+                    controller.reset()  # next step() re-arms like CMD_START on the robot
             if logger:
                 logger.write(state)
 
