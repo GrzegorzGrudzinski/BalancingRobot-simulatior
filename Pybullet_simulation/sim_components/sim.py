@@ -196,6 +196,16 @@ class Simulation:
         n_periods = round(duration_s / (self._ctrl_every * self._timestep))
         state = self._robot.read_state()  # what the controller sees before the first period
         for _ in range(n_periods):
+            if self._gui and hasattr(controller, "command_pos"):
+                keys = p.getKeyboardEvents()
+                fwd = bool(keys.get(p.B3G_UP_ARROW, 0) & p.KEY_IS_DOWN)
+                back = bool(keys.get(p.B3G_DOWN_ARROW, 0) & p.KEY_IS_DOWN)
+                controller.command_pos(0.5 * (fwd - back))   # [m]
+
+                left  = bool(keys.get(p.B3G_LEFT_ARROW, 0) & p.KEY_IS_DOWN)
+                right = bool(keys.get(p.B3G_RIGHT_ARROW, 0) & p.KEY_IS_DOWN)
+                if hasattr(controller, "command_yaw"):
+                    controller.command_yaw(0.2 * (left - right))   # [rad], CCW (left arrow) > 0, as test_core.c:161
             if not self._is_running:
                 break
             command = controller.step(state, dt) if controller else None

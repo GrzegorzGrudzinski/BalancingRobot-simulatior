@@ -93,7 +93,9 @@ class SimConfig:
     # SiL: firmware cascade in C instead of the Python PID
     sil_dir: str | None = None          # path to BalancingRobot-Main-Controller/sil, None = Python PID
     sil_friction_comp: bool = False     # frictionComp() after the cascade, like FRIC_COMP_ENABLE
+    sil_full_core: bool = False         # True: whole STM core (robotCoreStep), False: cascade only
 
+    
     # start / reset
     start_pitch_deg: float | None = None  # None -> random in +-start_pitch_range_deg
     start_pitch_range_deg: float = 3.0    # firmware START_ANGLE

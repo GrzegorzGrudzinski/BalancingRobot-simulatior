@@ -27,14 +27,14 @@ if __name__ == "__main__":
     sp.camera_tracking = True if sp.gui == True else False
 
     sp.sil_dir = "../BalancingRobot-Main-Controller/sil"   # relative to the directory the simulator runs from
-    sp.sil_friction_comp = False                           # True -> 14.12 compensation, as FRIC_COMP_ENABLE
+    sp.sil_friction_comp = True                           # True -> compensation, as FRIC_COMP_ENABLE
+    config.sim_params.sil_full_core = True
 
     config.sim_params.start_pitch_deg = None # 5.0
     config.sim_params.log_csv = "logs/run.csv"   # None -> no log
-
     
-    sp.disturb_force = 10
-    sp.disturb_interval_s = 2 # 0.83 
+    sp.disturb_force = 0
+    sp.disturb_interval_s = 6 # 0.83 
     sp.disturb_time_s = 0.5 # 0.083
 
     # config.motor_params.VISCOUS_FRICTION = 0.5
@@ -46,9 +46,9 @@ if __name__ == "__main__":
     # config.motor_params.DEADBAND_RATIO  = 0.0
 
     # firmware pitch loop (config.h), deg -> A
-    config.ctrl_params.pid_kp = 0.8
-    config.ctrl_params.pid_ki = 0.0
-    config.ctrl_params.pid_kd = 0.04 
+    # config.ctrl_params.pid_kp = 0.8
+    # config.ctrl_params.pid_ki = 0.0
+    # config.ctrl_params.pid_kd = 0.04 
 
     app = AppRunner(config)
     app.run()
@@ -59,13 +59,8 @@ TODO:
     - add a messaging system to interact with physical robot
     (start, stop, reset, setPID etc)
 
-updatePos:
-    - sim / IMU
-
 resetPos:
     - add a STOP signal for robot
-setPID:
-    - sim / MCU    
 
     #dodać czas trwania zakłócenia
 '''

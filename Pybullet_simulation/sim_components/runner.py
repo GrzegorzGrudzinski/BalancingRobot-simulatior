@@ -63,7 +63,11 @@ class AppRunner:
         logger = CsvLogger(sp.log_csv) if sp.log_csv else None
 
         controller = None
-        if sp.sil_dir:
+        if sp.sil_dir and sp.sil_full_core:
+            from sim_components.controllers.full_core import FullCoreController
+            controller = FullCoreController(sp.sil_dir)
+        elif sp.sil_dir:
+
             from sim_components.controllers.c_core import CCoreController
             controller = CCoreController(sp.sil_dir, friction=sp.sil_friction_comp)
 

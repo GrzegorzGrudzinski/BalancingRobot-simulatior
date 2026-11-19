@@ -133,11 +133,13 @@ class Robot:
         pos, orn = p.getBasePositionAndOrientation(self._id)
         _, ang_vel = p.getBaseVelocity(self._id)
         wheel_axis = np.array(p.getMatrixFromQuaternion(orn))[[0, 3, 6]]  # body X in world
+        body_z = np.array(p.getMatrixFromQuaternion(orn))[[2, 5, 8]]
         l_pos, r_pos, l_vel, r_vel = self._config.sensor_encoder.read_all(self._id, self._joint_indices)
         l_pos, l_vel = -l_pos, -l_vel  # wheel axes are mirrored in the URDF
         return {
             "pitch": np.rad2deg(p.getEulerFromQuaternion(orn)[self._pitch_axis]),
             "pitch_rate": np.rad2deg(float(np.dot(ang_vel, wheel_axis))),
+            "yaw_rate": np.rad2deg(np.dot(ang_vel, body_z)),
             "position": 0.5 * (l_pos + r_pos) * WHEEL_RADIUS,
             "velocity": 0.5 * (l_vel + r_vel) * WHEEL_RADIUS,
             "left_wheel_pos": l_pos, "right_wheel_pos": r_pos,

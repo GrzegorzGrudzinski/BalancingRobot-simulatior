@@ -1,14 +1,14 @@
 """SiL adapter: the firmware cascade in C (sil/libcontrol_core.so) as the robot controller."""
 import sys
 from pathlib import Path
-
+import math # import radians
 
 class CCoreController:
     """The STM32 control path in BALANCING: controlRun() and, optionally, frictionComp() from the mean wheel speed (14.12).
     State and command in firmware units (deg, deg/s, m, m/s, rad/s, A), as returned by Simulation.step()."""
 
     def __init__(self, sil_dir: str, params=None, friction=None, wheel_lpf_tf: float = 0.05,
-                 wheel_radius: float = 0.055):
+                 wheel_radius: float = 0.055, wheel_base: float = 0.200):
         """params: control_core.CascadeParams, None = defaults (= config.h).
         friction: control_core.FrictionParams or True (= defaults) -> compensation on, None/False -> off
         (FRIC_COMP_ENABLE 0).
@@ -24,15 +24,20 @@ class CCoreController:
         self._w = [0.0, 0.0]          # filtered wheel speeds [rad/s], what the STM gets from the ESP
         self._armed = False
         self._target = 0.0
+        self._r = wheel_radius
+        self._b = wheel_base
 
     def _wheels(self, state: dict, dt: float) -> None:
         for k, key in enumerate(("mot1_vel", "mot2_vel")):
             a = 1.0 if self._tf <= 0 else dt / (self._tf + dt)
             self._w[k] += a * (state[key] - self._w[k])
 
-    def _fw(self, state: dict) -> tuple[float, float, float, float]:
-        # velocity from the (filtered) wheel speeds, as updateControlState() on the STM32
-        return state["pitch"], state["pitch_rate"], state["position"], 0.5 * (self._w[0] + self._w[1]) * self._r
+    def _fw(self, state: dict) -> tuple[float, float, float, float, float, float]:
+        # velocity from the (filtered) wheel speeds, yaw from the wheel positions, as robot_core.c on the STM32
+        yaw = (state["right_wheel_pos"] - state["left_wheel_pos"]) * self._r / self._b      # [rad]
+        yaw_rate = -math.radians(state["yaw_rate"])  # [rad/s], gyro Z is opposite to the wheel yaw (robot_core.c)
+        return (state["pitch"], state["pitch_rate"], state["position"],
+                0.5 * (self._w[0] + self._w[1]) * self._r, yaw, yaw_rate)
 
     def step(self, state: dict, dt: float) -> tuple[float, float]:
         self._wheels(state, dt)

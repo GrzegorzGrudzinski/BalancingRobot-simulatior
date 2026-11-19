@@ -11,7 +11,8 @@ import os
 _COLUMNS = [
     ("timestamp_ms", None), ("robot_state", None),
     ("pitch", "measured_pitch"), ("pitch_rate", "pitch_rate"),
-    ("position", "position"), ("velocity", "velocity"),
+    ("position", "position"), ("velocity", "velocity"), 
+    ("yaw", "yaw"), 
     ("left_wheel_pos", "left_wheel_pos"), ("right_wheel_pos", "right_wheel_pos"),
     ("mot1_vel", "mot1_vel"), ("mot2_vel", "mot2_vel"),
     ("out_l", "out_l"), ("out_r", "out_r"),
@@ -20,7 +21,8 @@ _COLUMNS = [
     # controller internals, only with an external controller (SiL): empty for the Python PID
     ("target_position", "target_position"), ("position_output", "position_output"),
     ("velocity_output", "velocity_output"), ("pitch_setpoint", "pitch_setpoint"),
-    ("pitch_output", "pitch_output"), ("i_velocity", "i_velocity"),
+    ("pitch_output", "pitch_output"),  ("target_yaw", "target_yaw"), ("yaw_output", "yaw_output"),
+    ("i_velocity", "i_velocity"),
 ]
 STATE_BALANCING, STATE_FALLEN = 3, 4  # RobotState_t values
 
