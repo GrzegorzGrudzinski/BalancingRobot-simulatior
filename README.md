@@ -1,59 +1,109 @@
 # Self-Balancing Robot Simulator
 
-## Overview
+A physics-based simulator of a two-wheeled self-balancing robot, built with **PyBullet**
+(engineering thesis project). It is used to test controllers, sensor noise and motor models before
+running them on the real robot, and to run the **robot's own firmware code in the loop (SiL)**.
 
-A modular, physics-based simulation environment for a two-wheeled self-balancing robot. Built with **PyBullet**, this simulator allows for rapid testing of various control algorithms, sensor noise models, and motor characteristics before real-world deployment.
+Part of the Balancing Robot project:
 
-The project features a highly configurable, component-based architecture where controllers, sensors, and actuators can be easily swapped or modified using a central configuration system.
+| Repository | Role |
+| --- | --- |
+| [BalancingRobot-Main-Controller](https://github.com/GrzegorzGrudzinski/BalancingRobot-Main-Controller) | STM32 firmware; its `sil/` library is used here as the controller |
+| [BalancingRobot-SimpleFOC-Motor-Controller](https://github.com/GrzegorzGrudzinski/BalancingRobot-SimpleFOC-Motor-Controller) | ESP32 + SimpleFOC motor driver |
+| **BalancingRobot-simulatior** (this repo) | PyBullet simulator |
+| [BalancingRobot-DataAnalyser](https://github.com/GrzegorzGrudzinski/BalancingRobot-DataAnalyser) | PC telemetry parser; same CSV format as the simulator log |
 
-## Architecture & Features
+## Features
 
-The simulation is built around modular components created via a `RobotBuilder`:
+- URDF robot model (`robot.urdf`, meshes in `assets/`) with real-time centre-of-mass visualisation.
+- Component-based setup (`RobotBuilder`): controllers, sensors and motors are chosen in `AppConfig`.
+  - **Controllers:** Python PID, Python cascade PID, or the firmware C code through SiL (below).
+  - **Sensors:** ideal or noisy IMU and encoders.
+  - **Motors:** ideal or "real" (current-driven, deadband, noise, delay, friction), with motor profiles
+    (`motor_profiles.py`, e.g. `bldc_5010_360kV`).
+- External disturbance forces with configurable magnitude, duration and interval.
+- Auto-reset when the robot falls.
+- Reproducible runs (`seed`), GUI or headless batch mode, `Simulation.step()` API.
+- CSV log in the same column format as `telemetry_frame.py --csv` from the DataAnalyser, so robot and
+  simulation runs can be compared with the same scripts.
 
-* **Controllers:** Easily interchangeable control logic (currently implemented: PID).
-* **Sensors:** - **IMU:** Configurable as Ideal or Noisy (with adjustable alpha filtering).
-* **Encoders:** Configurable as Ideal or Noisy.
+## Software-in-the-loop (SiL)
 
+With `sim_params.sil_dir` set, the controller is the firmware C code built as a shared library in
+`BalancingRobot-Main-Controller/sil`:
 
-* **Actuators (Motors & Drivers):** Support for Ideal, Real (with configurable deadband, noise, and delay), and FOC (BLDC) motor profiles.
-* **Physics Engine:** PyBullet handles the rigid body dynamics, custom friction/damping parameters, and external disturbance forces.
+| Setting | Controller |
+| --- | --- |
+| `sil_dir = None` | Python controller from `AppConfig.controller` |
+| `sil_dir = ".../sil"`, `sil_full_core = False` | firmware cascade only (`controllers/c_core.py`) |
+| `sil_dir = ".../sil"`, `sil_full_core = True` | whole STM32 core: odometry, state machine, PC commands, cascade (`controllers/full_core.py`) |
 
-## Configuration
+Build the library first (in the main-controller repo): `make -C sil lib`.
 
-The environment is initialized via `AppConfig` in `main.py`, allowing fine-tuning of:
+> **Note:** the SiL adapters (`controllers/c_core.py`, `controllers/full_core.py`) are a temporary
+> prototype written with AI assistance to try out the approach; they will be rewritten.
 
-* Control loop gains (`pid_kp`, `pid_ki`, `pid_kd`).
-* Motor parameters (`MAX_TORQUE`, `NOISE`, `DEADBAND_RATIO`).
-* Disturbance parameters (force magnitude and intervals) for stability testing.
+## Setup
 
----
+The simulator expects the main-controller repo next to it (only needed for SiL):
 
-## Project Status
+```
+Balancing_Robot/
+  BalancingRobot-simulatior/
+  BalancingRobot-Main-Controller/
+```
 
-### Done
+```bash
+cd BalancingRobot-simulatior
+python3 -m venv .venv
+.venv/bin/pip install -r Pybullet_simulation/requirements.txt
+```
 
-* [x] PyBullet environment setup with URDF robot model loading.
-* [x] Modular component factory.
-* [x] Base classes and implementations for Ideal/Noisy components.
-* [x] Real-time Center of Mass (CoM) calculation and debug visualization.
-* [x] External disturbances with configurable duration.
-* [x] Auto-reset mechanism when the robot falls (exceeds max angle).
+## Running
 
-### To Do (Important)
-- [ ] Add position regulator with angle output
-- [ ] Improve robot physics (carpet effect, acceleration, masses?)
-- [ ] **Encoder Refinement:** Improve the virtual encoder models (e.g., ABI signal emulation, resolution limits, and realistic noise).
-* [ ] **State Synchronization:** Implement `updatePos` (Sim/IMU) and `resetPos` with a STOP signal for the physical robot.
-- [ ] **Simulation Analytics & Telemetry:** Add built-in data logging and analysis tools to evaluate controller performance over time:
-    - [ ] Max angle
-    - [ ] Max disturbing force
-    - [ ] Stabilisation time
-    - [ ] Max deviation from the center
-  
-### To Do (Less important)
-- [ ] **Advanced motor control:** Implement a virtual motor control algorithms (`driver class`) and add detailed motor parameters (e.g., acceleration profiles, electrical time constants).
-* [ ] **Sim-to-Real Messaging:** Add a communication system to interact with the physical robot (Hardware-in-the-Loop).
-* [ ] **Close sim2real gap**
-- [ ] **GUI Dashboard:** Develop a Graphical User Interface for real-time monitoring, state visualization, and live parameter tuning.
-- [ ] **Advanced Control & AI:** Implement alternative control strategies (e.g., LQR, MPC) and explore Reinforcement Learning (RL) agents for balancing.
-* [ ] **Remote Tuning:** Allow updating PID parameters dynamically between Sim and MCU.
+Run from the repository root (paths to `robot.urdf`, `logs/` and `sil_dir` are relative to it):
+
+```bash
+.venv/bin/python Pybullet_simulation/main.py
+```
+
+Edit `AppConfig` and `sim_params` in `Pybullet_simulation/main.py` to change the controller,
+sensors, motor model, duration, GUI/headless mode, disturbances and the log file.
+
+Whole-core SiL check (standstill, then a 0.3 m position step from the "PC", headless):
+
+```bash
+.venv/bin/python sil_full_core_check.py ../BalancingRobot-Main-Controller/sil
+```
+
+## Repository layout
+
+```
+Pybullet_simulation/
+  main.py                  entry point and configuration
+  sim_components/
+    config.py              AppConfig, enums, parameters
+    builder.py             RobotBuilder (component factory)
+    runner.py              AppRunner: builds and runs the simulation
+    sim.py, robot.py       PyBullet world and robot
+    controllers/           PID, cascade PID, SiL adapters (c_core.py, full_core.py)
+    sensors/               IMU and encoder models
+    motors/                motor models, profiles, drivers
+    logger.py              CSV logger
+robot.urdf, assets/        robot model and meshes
+resources/                 UML, state machine and call hierarchy diagrams
+sil_full_core_check.py     SiL check script
+```
+
+## Planned
+
+- Hardware-in-the-loop and a "mirror" mode (robot pose from live telemetry); `RunMode.PHYSICAL`
+  is not implemented yet.
+- Closing the sim-to-real gap: battery and ESP32 model, masses and friction from measurements.
+- Trajectory following (lines, arcs, circles) and comparison of the same mission in simulation
+  and on the robot.
+- Alternative controllers (LQR, RL).
+
+## License
+
+MIT, see [LICENSE](LICENSE).
