@@ -13,7 +13,6 @@ class RunMode(Enum):
     PHYSICAL = auto()
 class ControllerType(Enum): 
     PID = auto()
-    CASCADE_PID = auto()
     CONTROLLER_PHYSICAL = auto()
 class ImuType(Enum): 
     IDEAL = auto()
@@ -37,10 +36,6 @@ class ControllerConfig:
     pid_ki: float = 0.0    # [A/(deg*s)]
     pid_kd: float = 0.04   # [A/(deg/s)]   CASCADE_PITCH_KD
 
-    pid_ang_Kp: float = 1.0
-    pid_ang_Ki: float = 0.0
-    pid_ang_Kd: float = 0.0
-    
     max_output: float = 2.5  # [A] CASCADE_PITCH_MAX_OUT
     max_pitch_angle: float = 15.0
 

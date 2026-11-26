@@ -5,7 +5,7 @@
     build project with applied configuration
 '''
 from sim_components import *    # config
-from sim_components.controllers import PID, CascadePID
+from sim_components.controllers import PID
 from sim_components.sensors import IdealIMU, NoisyIMU, IdealEncoder, NoisyEncoder
 from sim_components.motors.motor_drivers import SimpleDriver
 from sim_components.motors.motor_types import IdealMotor, RealMotor
@@ -14,9 +14,6 @@ from sim_components.motors.motor_types import IdealMotor, RealMotor
 class RobotBuilder:
     _CONTROLLERS = {
         ControllerType.PID: lambda cfg: PID(cfg.max_output, cfg.pid_kp, cfg.pid_ki, cfg.pid_kd),
-        ControllerType.CASCADE_PID: lambda cfg: CascadePID(cfg.max_output,
-                                                           pos_Kp=cfg.pid_kp, pos_Ki=cfg.pid_ki, pos_Kd=cfg.pid_kd, 
-                                                           ang_Kd=cfg.pid_ang_Kd, ang_Ki=cfg.pid_ang_Ki, ang_Kp=cfg.pid_ang_Kp ),
     }
 
     _SENSORS_IMU = {
